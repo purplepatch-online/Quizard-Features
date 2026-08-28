@@ -1,0 +1,160 @@
+\chapter{The XP Ledger, Linear Daily Streaks, and Milestone Achievement System}
+
+\begin{tcolorbox}[storybox, title={The Retention Gamification Engine in Brief}]
+A 15-day live data review revealed that the majority of players churn after a single session. To cultivate enduring daily return habits, Quizard implements an Experience Point (XP) system powered by an immutable transaction ledger, linear daily streak rewards, a giant 15th-day milestone surge, and collectible achievement badges.
+\end{tcolorbox}
+
+\section{Core Experience Point (XP) Earning Mechanics}
+XP serves as Quizard's primary engagement currency, separate from competitive tournament scores. It is awarded for participation and daily consistency:
+
+\begin{itemize}
+    \item \textbf{Daily First-Play Bonus:} $+50\text{ XP}$ awarded on the contestant's first tournament round of the day.
+    \item \textbf{Round Completion Base XP:} $+10\text{ XP}$ awarded upon completing each 60-question match.
+    \item \textbf{Answer Accuracy Bounty:} $+1\text{ XP}$ per correct answer ($\text{RightCount} \le 60$).
+\end{itemize}
+
+\section{Linear Daily Streaks with the Giant 15th-Day Surge}
+To foster an intuitive and predictable daily habit loop, the daily streak progression is strictly \textbf{linear}, rewarding each consecutive return day with an incremental boost, culminating in a \textbf{giant milestone bump on the 15th day}.
+
+\subsection{Linear Daily Formula}
+For Days 1 through 14:
+\begin{equation}
+\text{Streak Bonus XP}(\text{Day } n) = 20 \times n
+\end{equation}
+
+\subsection{The 15-Day Milestone Progression Matrix}
+\begin{table}[htbp]
+\centering
+\footnotesize
+\begin{tabular}{|c|c|p{4.5cm}|p{4.5cm}|}
+\hline
+\rowcolor{primaryBlue!15}
+\textbf{Consecutive Day} & \textbf{Linear Base Bonus} & \textbf{Special Milestone Surge} & \textbf{Total Daily Streak Reward} \\ \hline
+\textbf{Day 1} & $+20\text{ XP}$ & -- & $+20\text{ XP}$ \\ \hline
+\textbf{Day 2} & $+40\text{ XP}$ & -- & $+40\text{ XP}$ \\ \hline
+\textbf{Day 3} & $+60\text{ XP}$ & -- & $+60\text{ XP}$ \\ \hline
+\textbf{Day 4} & $+80\text{ XP}$ & -- & $+80\text{ XP}$ \\ \hline
+\textbf{Day 5} & $+100\text{ XP}$ & -- & $+100\text{ XP}$ \\ \hline
+\textbf{Day 6} & $+120\text{ XP}$ & -- & $+120\text{ XP}$ \\ \hline
+\textbf{Day 7} & $+140\text{ XP}$ & Week 1 Streak Badge & $+140\text{ XP} + \text{Bronze Badge}$ \\ \hline
+\textbf{Day 8} & $+160\text{ XP}$ & -- & $+160\text{ XP}$ \\ \hline
+\textbf{Day 9} & $+180\text{ XP}$ & -- & $+180\text{ XP}$ \\ \hline
+\textbf{Day 10} & $+200\text{ XP}$ & -- & $+200\text{ XP}$ \\ \hline
+\textbf{Day 11} & $+220\text{ XP}$ & -- & $+220\text{ XP}$ \\ \hline
+\textbf{Day 12} & $+240\text{ XP}$ & -- & $+240\text{ XP}$ \\ \hline
+\textbf{Day 13} & $+260\text{ XP}$ & -- & $+260\text{ XP}$ \\ \hline
+\textbf{Day 14} & $+280\text{ XP}$ & -- & $+280\text{ XP}$ \\ \hline
+\rowcolor{accentAmber!20}
+\textbf{Day 15} & $+300\text{ XP}$ & \textbf{+2,500 XP Milestone Surge} & $\mathbf{+2,800\text{ \textbf{XP}}} + \text{\textbf{Half-Month Titan}}$ \\ \hline
+\textbf{Day 16} & $+320\text{ XP}$ & -- & $+320\text{ XP}$ \\ \hline
+\end{tabular}
+\caption{Linear Daily Streak Progression with Giant 15th-Day Milestone Bump}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.95]
+    \begin{axis}[
+        title={\textbf{Linear Daily Streak Growth with Giant 15th-Day Surge}},
+        xlabel={Consecutive Daily Streak (Days)},
+        ylabel={Streak Bonus XP Awarded},
+        xmin=1, xmax=16,
+        ymin=0, ymax=3000,
+        xtick={1,3,5,7,9,11,13,15,16},
+        ytick={0, 500, 1000, 1500, 2000, 2500, 2800},
+        grid=major,
+        width=12.5cm, height=6.5cm,
+        legend pos=north west
+    ]
+    \addplot[color=accentGreen!80!black, mark=square*, line width=1.5pt] coordinates {
+        (1, 20)
+        (2, 40)
+        (3, 60)
+        (4, 80)
+        (5, 100)
+        (6, 120)
+        (7, 140)
+        (8, 160)
+        (9, 180)
+        (10, 200)
+        (11, 220)
+        (12, 240)
+        (13, 260)
+        (14, 280)
+        (15, 2800)
+        (16, 320)
+    };
+    \legend{Daily Streak XP Trajectory}
+    \end{axis}
+\end{tikzpicture}
+\caption{Visual Trajectory of Daily Streak Rewards Illustrating the Day 15 Giant Bump}
+\end{figure}
+
+\section{Milestone Achievement Badges Shelf}
+Contestants unlock permanent collectible badges displayed on their public profiles:
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{|l|l|p{6.8cm}|}
+\hline
+\rowcolor{primaryBlue!15}
+\textbf{Badge Name} & \textbf{Tier} & \textbf{Unlock Criteria} \\ \hline
+\textbf{First Blood} & Bronze & Win 1st tournament match or place in the daily top 100. \\ \hline
+\textbf{Week 1 Champion} & Bronze & Maintain an unbroken 7-day daily gameplay streak. \\ \hline
+\textbf{Speed Demon} & Silver & Complete a 60-question round with $\ge 50$ correct in $< 90$ seconds. \\ \hline
+\textbf{Quiz Scholar} & Gold & Play all 4 official games (Daily, Sports, BCS, Tournament) in 7 days. \\ \hline
+\textbf{Century Club} & Gold & Accumulate 100 total completed tournament rounds. \\ \hline
+\textbf{Half-Month Titan}& Platinum & Complete the 15-day unbroken daily streak and claim the giant surge. \\ \hline
+\textbf{Master Strategist}& Diamond & Achieve and maintain a rolling score band in \textbf{Master} ($50-59$). \\ \hline
+\textbf{Grandmaster Elite}& Diamond & Score a perfect 60/60 in a live tournament championship. \\ \hline
+\end{tabular}
+\caption{Quizard Milestone Achievement Badges Matrix}
+\end{table}
+
+\section{Database Schema and API Architecture}
+
+\subsection{1. PostgreSQL Immutable XP Ledger Table}
+\begin{lstlisting}[language=SQL, caption={PostgreSQL Schema for XP Ledger}]
+CREATE TABLE participant_xp_ledger (
+    id BIGSERIAL PRIMARY KEY,
+    msisdn VARCHAR(15) NOT NULL,
+    portal_id INT NOT NULL DEFAULT 15,
+    xp_amount INT NOT NULL,
+    source_event VARCHAR(50) NOT NULL, -- 'daily_login', 'streak_linear', 'streak_day_15_giant_bump', 'quiz_round'
+    balance_after INT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_xp_ledger_lookup ON participant_xp_ledger (msisdn, portal_id, created_at DESC);
+\end{lstlisting}
+
+\subsection{2. REST Endpoints Specification}
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{|p{6.2cm}|c|p{7.5cm}|}
+\hline
+\rowcolor{primaryBlue!15}
+\textbf{Endpoint} & \textbf{Method} & \textbf{Payload / Response Description} \\ \hline
+\texttt{/api/participantProfile/}\newline\texttt{xp\_summary/} & \texttt{GET} & Returns cumulative XP, current unbroken streak count, and unlocked badge objects. \\ \hline
+\end{tabular}
+\caption{XP Summary REST Endpoint}
+\end{table}
+
+\section{Real-World Scenario: Sabina's 15-Day Streak Journey}
+In Dhaka, Sabina commits to playing Quizard every morning during her MRT transit:
+
+\begin{enumerate}
+    \item \textbf{Days 1--5:} Sabina earns $+20\text{ XP}, +40\text{ XP}, +60\text{ XP}, +80\text{ XP}$, and $+100\text{ XP}$ alongside her daily first-play bonuses.
+    \item \textbf{Day 7:} Unlocks the \textbf{Week 1 Champion} bronze badge.
+    \item \textbf{Days 8--14:} Her streak climbs linearly ($+160\text{ XP} \to +280\text{ XP}$).
+    \item \textbf{Day 15 (The Giant Surge):} Sabina logs in and completes her morning round. The backend triggers the giant 15th-day milestone, crediting $\mathbf{+2,800\text{ XP}}$, elevating her to Player Level 18, and awarding the coveted \textbf{Half-Month Titan} platinum badge.
+\end{enumerate}
+
+\begin{tcolorbox}[summarybox, title={Chapter Key Takeaways}]
+\begin{itemize}
+    \item The linear streak model ($+20\text{ XP} \times \text{day}$) provides clear daily progression.
+    \item The giant 15th-day milestone surge ($+2,800\text{ XP}$) delivers a major gratification climax that dramatically curbs mid-month churn.
+    \item The immutable XP ledger guarantees auditable, tamper-proof tracking of all gamification rewards.
+\end{itemize}
+\end{tcolorbox}

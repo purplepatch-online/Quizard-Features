@@ -1,0 +1,16 @@
+# LaTeX Auxiliary Build Files
+*.aux
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.nav
+*.snm
+*.vrb
+
+# Temporary Media / Storage
+.tempmediaStorage/
+*.tmp
+*.bak

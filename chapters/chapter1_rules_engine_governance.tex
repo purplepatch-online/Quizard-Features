@@ -1,0 +1,102 @@
+\chapter{The Rules Engine: Game Governance, Timers, and Attempt Limits}
+
+\begin{tcolorbox}[storybox, title={The Rules Engine in Brief}]
+Before a single question appears on a player's phone screen, the Quizard backend consults its **Rules Engine**. The Rules Engine acts as the tournament constitution: it dynamically sets how many questions each player receives (e.g., 60 questions), how many seconds they have to answer them (e.g., 180 seconds / 3 minutes), how many attempts they are allowed per day (e.g., exactly 2 rounds per day), and what reward prizes are at stake.
+\end{tcolorbox}
+
+\section{Why Dynamic Rules Matter}
+In traditional mobile games, quiz rules and timers are often hardcoded directly into the phone app. If tournament organizers want to change a quiz duration from 3 minutes to 2 minutes for a special holiday tournament, they would normally have to build and publish a brand new app update to the Google Play Store and Apple App Store.
+
+Quizard solves this through its **Backend-Driven Rules Engine** (mapped in Django to \texttt{apps.cms.models.Rules} and in .NET to the \texttt{Rule} domain entity). Every aspect of gameplay is determined on the server in real time:
+
+\begin{itemize}
+    \item \textbf{Allocated Time (\texttt{allocated\_time}):} Total gameplay window in seconds (e.g., $180\text{ seconds} = 3\text{ minutes}$).
+    \item \textbf{Question Set Count (\texttt{question\_set}):} Total questions served per quiz round (e.g., 60 questions).
+    \item \textbf{Daily Round Limit (\texttt{round}):} Maximum allowed plays per calendar day (e.g., 2 attempts per day).
+    \item \textbf{Passing Score (\texttt{passing\_score}):} Minimum correct answers required to qualify for daily rewards (e.g., 20 correct answers).
+    \item \textbf{Category Distribution (\texttt{category}):} Array of approved topic IDs (General Knowledge, BCS Preparation, Sports, Science, Islamic History).
+    \item \textbf{Reward Prize Pool (\texttt{winningPrize}):} Daily, weekly, or special event cash prizes (e.g., 5,000 BDT to 25,000 BDT).
+\end{itemize}
+
+\section{The Player Journey: Rahim Checks Today's Tournament Rules}
+
+\subsection{Morning Setup in Dhaka}
+It is 08:30 AM in Dhaka. Rahim, an avid university student and competitive quiz enthusiast, opens the Quizard mobile web application on his smartphone. 
+
+Before Rahim sees the ``Start Quiz'' button, his phone sends a background request to the backend:
+\begin{center}
+    \texttt{GET /api/rules/?portal=15\&events=34}
+\end{center}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    node distance=2.2cm,
+    box/.style={rectangle, draw=primaryDark, fill=white, rounded corners=2mm, minimum width=2.8cm, minimum height=1.0cm, align=center, line width=1pt},
+    apibox/.style={rectangle, draw=primaryBlue, fill=primaryBlue!10, rounded corners=2mm, minimum width=3.0cm, minimum height=1.0cm, align=center, line width=1.2pt},
+    dbbox/.style={rectangle, draw=accentGreen, fill=accentGreen!10, rounded corners=2mm, minimum width=2.8cm, minimum height=1.0cm, align=center, line width=1.2pt}
+]
+    \node[box] (app) at (0,0) {\textbf{Player Phone}\\\scriptsize Next.js App};
+    \node[apibox] (api) at (5.2,0) {\textbf{Rules API}\\\scriptsize \texttt{GET /api/rules/}};
+    \node[dbbox] (db) at (10.4,0) {\textbf{PostgreSQL DB}\\\scriptsize \texttt{cms\_rules} Table};
+
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (app) -- node[above, yshift=2pt]{\scriptsize 1. Query Event 34} (api);
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (api) -- node[above, yshift=2pt]{\scriptsize 2. Fetch Active Config} (db);
+    \draw[-{Latex[length=2.5mm]}, line width=1pt, dashed] (db) -- node[below, yshift=-2pt]{\scriptsize 3. 60 Qs, 180s, 2 Rounds} (api);
+    \draw[-{Latex[length=2.5mm]}, line width=1pt, dashed] (api) -- node[below, yshift=-2pt]{\scriptsize 4. Render UI \& Timers} (app);
+\end{tikzpicture}
+\caption{The Dynamic Rules Retrieval Lifecycle}
+\end{figure}
+
+The backend retrieves the active configuration for Event 34 on Portal 15 (bKash/Quizard Live) and delivers the JSON configuration:
+
+\begin{lstlisting}[language=json, caption={Rules Engine JSON Payload for 60-Question Tournament}]
+{
+  "id": 34,
+  "events": "Quizard Mega Rapid Tournament",
+  "category": [1, 2, 3, 4, 5],
+  "question_set": 60,
+  "allocated_time": 180,
+  "round": 2,
+  "passing_score": 20,
+  "winningPrize": "10,000 BDT",
+  "status": "active",
+  "company": 15
+}
+\end{lstlisting}
+
+\subsection{Enforcing the Daily Attempt Cap}
+Rahim knows he has **2 attempts per day** for this tournament. 
+
+\begin{enumerate}
+    \item \textbf{First Attempt at 09:00 AM:} Rahim plays his first round. He answers 60 rapid questions, scoring \textbf{54 correct} in \textbf{145 seconds}.
+    \item \textbf{Second Attempt at 02:00 PM:} Seeking to beat his score, Rahim plays his second round. He scores \textbf{58 correct} in \textbf{140 seconds}.
+    \item \textbf{Third Attempt at 06:00 PM (Blocked):} When Rahim attempts to start a third round, the backend counts his completed records for the day:
+    $$\text{Daily Attempt Count} = 2 \ge \text{Allocated Rounds } (2)$$
+    The backend returns an informative HTTP 403 response: \texttt{"Daily round limit reached. Please return tomorrow at 12:00 AM for fresh attempts."}
+\end{enumerate}
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{|l|l|l|p{6.5cm}|}
+\hline
+\rowcolor{primaryBlue!15}
+\textbf{Field} & \textbf{Type} & \textbf{Example} & \textbf{Engine Responsibility} \\ \hline
+\texttt{allocated\_time} & Integer (Sec) & 180 & Sets countdown clock for 60 questions (3 minutes total). \\ \hline
+\texttt{question\_set} & Integer & 60 & Specifies exactly how many questions to pull from category pools. \\ \hline
+\texttt{round} & Integer & 2 & Daily attempt limit per MSISDN per calendar day. \\ \hline
+\texttt{passing\_score} & Integer & 20 & Minimum score to qualify for rewards and tournament certificates. \\ \hline
+\texttt{category} & List[Int] & [1, 2, 4] & Filters question selection to approved tournament topics. \\ \hline
+\texttt{winningPrize} & Varchar & 10,000 BDT & Declares the official monetary prize for top rankers. \\ \hline
+\end{tabular}
+\caption{Key Fields in the Quizard Rules Governance Engine}
+\end{table}
+
+\begin{tcolorbox}[summarybox, title={Chapter Key Takeaways}]
+\begin{itemize}
+    \item Quizard decouples gameplay rules from client applications, empowering administrators to configure tournament parameters instantly on the server.
+    \item A standard rapid tournament serves **60 questions** within an **allocated time of 180 seconds** (3 minutes).
+    \item The backend strictly validates daily attempt limits (e.g., 2 rounds per day), preventing brute-force spamming while maintaining competitive fairness across Bangladesh.
+\end{itemize}
+\end{tcolorbox}

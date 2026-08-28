@@ -1,0 +1,195 @@
+\chapter{The Performance Rating Architecture: 6 Score Bands, Dynamic Deltas, and Progression Modeling}
+
+\begin{tcolorbox}[storybox, title={The Rating Engine in Brief}]
+A contestant's skill rating is bounded strictly as an \textbf{integer on the 0 to 60 tournament scale} ($0 \le R \le 60$). Instead of raw score spikes or decimal fractions, Quizard implements an integer-based asymmetric dynamic rating engine. Every round score ($S \in \{0, 1, \dots, 60\}$) dynamically pulls the player's integer rating up or down, directly determining their active competitive rank tier.
+\end{tcolorbox}
+
+\section{The 6 Integer Performance Bands (0 to 60 Scale)}
+A player's integer skill rating $R \in \{0, 1, \dots, 60\}$ maps directly to six distinct rank tiers:
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\begin{tabular}{|c|l|c|l|p{5.2cm}|}
+\hline
+\rowcolor{primaryBlue!15}
+\textbf{Tier} & \textbf{Rank Band Title} & \textbf{Integer Rating Range ($R$)} & \textbf{Color Theme} & \textbf{Competitive Meaning} \\ \hline
+\textbf{1} & \textbf{Novice} & 0 -- 19 & Cool Slate Gray & Casual participant / frequent drop-outs \\ \hline
+\textbf{2} & \textbf{Apprentice} & 20 -- 29 & Emerald Green & Developing player / building foundation \\ \hline
+\textbf{3} & \textbf{Specialist} & 30 -- 39 & Cyan Blue & Consistent mid-tier competitor \\ \hline
+\textbf{4} & \textbf{Expert} & 40 -- 49 & Royal Blue & High-level tournament contender \\ \hline
+\textbf{5} & \textbf{Master} & 50 -- 59 & Deep Violet & Tournament elite ($\ge 83\%$ accuracy) \\ \hline
+\textbf{6} & \textbf{Grandmaster} & 60 & Imperial Crimson & Flawless perfection ($100\%$ accuracy) \\ \hline
+\end{tabular}
+\caption{The Quizard 6-Tier Integer Performance Bands (0 to 60 Scale)}
+\end{table}
+
+\section{The Integer Dynamic Rating Update Formula}
+Upon completing a round with raw score $S_{t+1} \in \{0, \dots, 60\}$, the integer delta $\Delta R$ is calculated from the score gap $\Delta S = S_{t+1} - R_t$:
+
+\begin{equation}
+\Delta R = 
+\begin{cases} 
+0 & \text{if } S_{t+1} = R_t \\
+\max\left(1, \, \text{round}\big(0.20 \cdot (S_{t+1} - R_t)\big)\right) & \text{if } S_{t+1} > R_t \\
+\min\left(-1, \, \text{round}\big(0.35 \cdot (S_{t+1} - R_t)\big)\right) & \text{if } S_{t+1} < R_t \text{ and } S_{t+1} \ge 20 \\
+\min\left(-2, \, \text{round}\big(0.45 \cdot (S_{t+1} - R_t)\big)\right) & \text{if } S_{t+1} < 20 \quad \text{(Severe Drop Penalty)}
+\end{cases}
+\end{equation}
+
+The updated integer rating $R_{t+1}$ is clamped strictly between 0 and 60:
+
+\begin{equation}
+R_{t+1} = \text{clamp}\big(0, \, 60, \, R_t + \Delta R\big)
+\end{equation}
+
+\subsection{Core Principles of the Integer Engine}
+\begin{itemize}
+    \item \textbf{Strict Integer Scale ($0 \le R \le 60$):} All ratings, deltas, and score bands are whole integers, ensuring clean display on mobile badges and profile cards.
+    \item \textbf{Guaranteed Movement:} When a player outperforms their rating ($S > R$), they gain at least $+1$ rating point. When they underperform ($S < R$), they lose at least $-1$ point.
+    \item \textbf{Asymmetric Penalty:} Quitting or scoring $<20$ triggers an aggressive integer penalty ($\ge -2$ up to $-10$), preventing casual resets.
+\end{itemize}
+
+\section{Step-by-Step Scenarios: The Player at Rating 34}
+To illustrate the integer mechanics, consider a player, Mahir, with an established integer rating of $\mathbf{R_0 = 34}$ (\textbf{Specialist} Band: 30--39).
+
+\begin{table}[htbp]
+\centering
+\scriptsize
+\begin{tabular}{|c|c|c|c|c|c|p{5.4cm}|}
+\hline
+\rowcolor{primaryBlue!15}
+\textbf{Case} & \textbf{Start $R$} & \textbf{Score ($S$)} & \textbf{Gap ($\Delta S$)} & \textbf{Formula Math} & \textbf{New $R$} & \textbf{Resulting Band \& Tier Movement} \\ \hline
+\textbf{A} & $34$ & $32$ & $-2$ & $\text{round}(0.35 \times -2) = -1$ & $\mathbf{33}$ & \textbf{Specialist} (30--39): Soft $-1$ integer step. \\ \hline
+\textbf{B} & $34$ & $36$ & $+2$ & $\max(1, \text{round}(0.20 \times 2)) = +1$ & $\mathbf{35}$ & \textbf{Specialist} (30--39): Steady $+1$ integer gain. \\ \hline
+\textbf{C} & $34$ & $38$ & $+4$ & $\text{round}(0.25 \times 4) = +1$ & $\mathbf{35}$ & \textbf{Specialist} (30--39): Approaching Expert line. \\ \hline
+\textbf{D} & $34$ & $52$ & $+18$ & $\text{round}(0.25 \times 18) = +5$ & $\mathbf{39}$ & \textbf{Specialist}: Major $+5$ surge to the cusp of Expert. \\ \hline
+\textbf{E} & $34$ & $12$ & $-22$ & $\text{round}(0.45 \times -22) = -10$ & $\mathbf{24}$ & \textbf{Apprentice} (20--29): Demoted after $-10$ drop! \\ \hline
+\end{tabular}
+\caption{Single-Round Integer Transitions for a Player Starting at Rating 34}
+\end{table}
+
+\subsection{Detailed Analysis of Each Case}
+\begin{enumerate}
+    \item \textbf{Case A: Score 32 (Slightly Below Rating):}
+    $$\Delta S = 32 - 34 = -2 \implies \Delta R = -1 \implies R_1 = 34 - 1 = \mathbf{33}$$
+    \textit{Outcome:} Rating gently softens from 34 to 33, remaining securely within the Specialist band ($30-39$).
+
+    \item \textbf{Case B: Score 36 (Slightly Above Rating):}
+    $$\Delta S = 36 - 34 = +2 \implies \Delta R = +1 \implies R_1 = 34 + 1 = \mathbf{35}$$
+    \textit{Outcome:} Beating current expectation awards $+1$ point, climbing to 35.
+
+    \item \textbf{Case C: Score 38 (Strong Specialist Round):}
+    $$\Delta S = 38 - 34 = +4 \implies \Delta R = +1 \implies R_1 = 34 + 1 = \mathbf{35}$$
+    \textit{Outcome:} High accuracy sustains upward momentum toward the 40 Expert boundary.
+
+    \item \textbf{Case D: Score 52 (Master Breakout Performance):}
+    $$\Delta S = 52 - 34 = +18 \implies \Delta R = \text{round}(0.25 \times 18) = +5 \implies R_1 = 34 + 5 = \mathbf{39}$$
+    \textit{Outcome:} Scoring 52 correct produces an immediate $+5$ leap to 39. In the next round, if Mahir scores 55:
+    $$\Delta S = 55 - 39 = +16 \implies \Delta R = +4 \implies R_2 = 39 + 4 = \mathbf{43} \quad (\text{Promoted to Expert!})$$
+
+    \item \textbf{Case E: Score 12 (Severe Drop / Abandonment):}
+    $$\Delta S = 12 - 34 = -22 \implies \Delta R = \text{round}(0.45 \times -22) = -10 \implies R_1 = 34 - 10 = \mathbf{24}$$
+    \textit{Outcome:} Quitting early triggers the severe $-10$ integer penalty, immediately demoting the player from 34 down to \textbf{24 (Apprentice)}.
+\end{enumerate}
+
+\section{Multi-Round Lifecycle Simulation (Pure Integers 0 to 60)}
+The table below traces Mahir's integer rating evolution across 9 consecutive tournament matches:
+
+\begin{table}[htbp]
+\centering
+\scriptsize
+\begin{tabular}{|c|c|c|c|c|c|p{5.4cm}|}
+\hline
+\rowcolor{primaryBlue!15}
+\textbf{Round} & \textbf{Start $R$} & \textbf{Score ($S$)} & \textbf{Gap ($\Delta S$)} & \textbf{Delta ($\Delta R$)} & \textbf{End $R$} & \textbf{Tier Status \& Progression Description} \\ \hline
+\textbf{1} & $20$ & $25$ & $+5$ & $+1$ & $\mathbf{21}$ & \textbf{Apprentice} (Initial onboarding match) \\ \hline
+\textbf{2} & $21$ & $36$ & $+15$ & $+3$ & $\mathbf{24}$ & \textbf{Apprentice} (Climbing through Tier 2) \\ \hline
+\textbf{3} & $24$ & $48$ & $+24$ & $+5$ & $\mathbf{29}$ & \textbf{Apprentice} (Knocking on Specialist door) \\ \hline
+\textbf{4} & $29$ & $45$ & $+16$ & $+3$ & $\mathbf{32}$ & \textbf{Specialist} ($\mathbf{\ge 30}$ promotion to Tier 3!) \\ \hline
+\textbf{5} & $32$ & $54$ & $+22$ & $+5$ & $\mathbf{37}$ & \textbf{Specialist} (High-accuracy performance) \\ \hline
+\textbf{6} & $37$ & $56$ & $+19$ & $+5$ & $\mathbf{42}$ & \textbf{Expert} ($\mathbf{\ge 40}$ promotion to Tier 4!) \\ \hline
+\textbf{7} & $42$ & $58$ & $+16$ & $+4$ & $\mathbf{46}$ & \textbf{Expert} (Solidifying position in Tier 4) \\ \hline
+\textbf{8} & $46$ & $60$ & $+14$ & $+4$ & $\mathbf{50}$ & \textbf{Master} ($\mathbf{\ge 50}$ elite status unlocked!) \\ \hline
+\textbf{9} & $50$ & $60$ & $+10$ & $+3$ & $\mathbf{53}$ & \textbf{Master} (Consolidating Master ranking) \\ \hline
+\end{tabular}
+\caption{Multi-Round Simulation Showing Continuous Integer Rating Evolution ($0$ to $60$)}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.95]
+    \begin{axis}[
+        title={\textbf{Integer Rating ($R$) vs. Round Scores ($S$) on the 0 to 60 Scale}},
+        xlabel={Tournament Rounds Played},
+        ylabel={Integer Rating / Score ($0 - 60$)},
+        xmin=1, xmax=9,
+        ymin=0, ymax=65,
+        xtick={1,2,3,4,5,6,7,8,9},
+        ytick={0, 20, 30, 40, 50, 60},
+        grid=major,
+        width=12.5cm, height=7.0cm,
+        legend pos=north west
+    ]
+    % Background Score Band Zones
+    \addplot[fill=gray!15, draw=none, domain=1:9] {20} \closedcycle;
+    \addplot[fill=green!12, draw=none, domain=1:9] {30} \closedcycle;
+    \addplot[fill=cyan!12, draw=none, domain=1:9] {40} \closedcycle;
+    \addplot[fill=blue!12, draw=none, domain=1:9] {50} \closedcycle;
+    \addplot[fill=violet!15, draw=none, domain=1:9] {60} \closedcycle;
+    
+    % Player Score Line (dots)
+    \addplot[color=accentGreen!80!black, mark=triangle*, dashed, line width=1.2pt] coordinates {
+        (1, 25) (2, 36) (3, 48) (4, 45) (5, 54) (6, 56) (7, 58) (8, 60) (9, 60)
+    };
+    
+    % Player Rating Line (solid curve)
+    \addplot[color=primaryBlue, mark=*, line width=2.0pt] coordinates {
+        (1, 21) (2, 24) (3, 29) (4, 32) (5, 37) (6, 42) (7, 46) (8, 50) (9, 53)
+    };
+    
+    \legend{Novice (0-19), Apprentice (20-29), Specialist (30-39), Expert (40-49), Master (50-59), Round Score ($S$), Integer Rating ($R$)}
+    \end{axis}
+\end{tikzpicture}
+\caption{Visual Trajectory of Integer Rating ($R \in \{0,\dots,60\}$) Tracking Round Scores ($S$)}
+\end{figure}
+
+\section{Database Schema and API Architecture}
+
+\subsection{1. PostgreSQL Historical Rating Table}
+\begin{lstlisting}[language=SQL, caption={PostgreSQL Schema for Integer Rating History}]
+CREATE TABLE participant_rating_history (
+    id BIGSERIAL PRIMARY KEY,
+    msisdn VARCHAR(15) NOT NULL,
+    portal_id INT NOT NULL DEFAULT 15,
+    event_id INT NOT NULL,
+    round_score INT NOT NULL, -- 0 to 60
+    rating_before INT NOT NULL CHECK (rating_before BETWEEN 0 AND 60), -- e.g. 34
+    rating_delta INT NOT NULL,  -- e.g. +1, -1, +5, -10
+    rating_after INT NOT NULL CHECK (rating_after BETWEEN 0 AND 60),   -- e.g. 35 (strictly integer 0 to 60)
+    band VARCHAR(30) NOT NULL, -- 'Novice', 'Apprentice', 'Specialist', 'Expert', 'Master', 'Grandmaster'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_rating_history_lookup ON participant_rating_history (msisdn, portal_id, created_at DESC);
+\end{lstlisting}
+
+\subsection{2. REST Endpoints Specification}
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{|p{6.2cm}|c|p{7.5cm}|}
+\hline
+\rowcolor{primaryBlue!15}
+\textbf{Endpoint} & \textbf{Method} & \textbf{Payload / Response Description} \\ \hline
+\texttt{/api/participantProfile/}\newline\texttt{rating\_history/} & \texttt{GET} & Returns historical time-series of integer ratings ($0-60$), round scores, deltas, and current band title. \\ \hline
+\end{tabular}
+\caption{Rating History REST Endpoint}
+\end{table}
+
+\begin{tcolorbox}[summarybox, title={Chapter Key Takeaways}]
+\begin{itemize}
+    \item The rating $R$ and band boundaries are strictly integers between $0$ and $60$, providing clean, intuitive alignment with the 60-question game format.
+    \item Dynamic integer rounding guarantees immediate feedback ($\ge \pm 1$ point on performance delta) while preventing fractions or decimals.
+    \item Consistent high-accuracy tournament scores elevate contestants to Master ($50-59$) and Grandmaster ($60$).
+\end{itemize}
+\end{tcolorbox}

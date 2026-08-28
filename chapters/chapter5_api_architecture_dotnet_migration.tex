@@ -1,0 +1,77 @@
+\chapter{Architecture Blueprint: Clean Architecture and Database Schemas}
+
+\begin{tcolorbox}[storybox, title={The Architectural Evolution in Brief}]
+As Quizard expands to support millions of concurrent participants across telco partner portals (bKash, Banglalink, Robi), the backend is undergoing an architectural upgrade: transitioning from the original Django monolithic codebase to a high-throughput **.NET 10 Clean Architecture** backed by an enterprise **PostgreSQL** cluster.
+\end{tcolorbox}
+
+\section{The .NET 10 Clean Architecture Structure}
+The modernized .NET 10 backend enforces strict layer boundaries and dependency inversion:
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    node distance=1.2cm,
+    layer1/.style={rectangle, draw=primaryDark, fill=primaryBlue!20, rounded corners=2mm, minimum width=11cm, minimum height=0.8cm, align=center, line width=1.2pt},
+    layer2/.style={rectangle, draw=primaryBlue, fill=primaryBlue!10, rounded corners=2mm, minimum width=11cm, minimum height=0.8cm, align=center, line width=1.1pt},
+    layer3/.style={rectangle, draw=accentGreen, fill=accentGreen!10, rounded corners=2mm, minimum width=11cm, minimum height=0.8cm, align=center, line width=1.1pt},
+    layer4/.style={rectangle, draw=accentAmber, fill=accentAmber!10, rounded corners=2mm, minimum width=11cm, minimum height=0.8cm, align=center, line width=1.1pt}
+]
+    \node[layer1] (l1) at (0, 0) {\textbf{1. Presentation Layer (\texttt{Quizard.Api})}\\\scriptsize ASP.NET Core 10 Web API, Controllers, JWT/Token Auth Middleware, Swagger};
+    \node[layer2] (l2) at (0, -1.2) {\textbf{2. Application Layer (\texttt{Quizard.Application})}\\\scriptsize Business Logic, DTOs, Repository Interfaces, AntiCheatService, QuizService};
+    \node[layer3] (l3) at (0, -2.4) {\textbf{3. Infrastructure Layer (\texttt{Quizard.Infrastructure})}\\\scriptsize PostgreSQL (\texttt{Npgsql.EntityFrameworkCore}), AES Decryptor, Repositories, bKash Gateway};
+    \node[layer4] (l4) at (0, -3.6) {\textbf{4. Domain Layer (\texttt{Quizard.Domain})}\\\scriptsize Pure Entities (\texttt{QuizPlay}, \texttt{Rule}, \texttt{ParticipantDetail}, \texttt{WinnerRecord}), Enums};
+
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (l1) -- (l2);
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (l2) -- (l3);
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (l3) -- (l4);
+\end{tikzpicture}
+\caption{Quizard .NET 10 Clean Architecture Dependency Hierarchy}
+\end{figure}
+
+\section{Comprehensive API Endpoint and Schema Mapping}
+The following table provides the definitive cross-reference between Django REST endpoints, .NET 10 Clean Architecture controllers, and underlying PostgreSQL tables:
+
+\begin{table}[htbp]
+\centering
+\scriptsize
+\begin{tabular}{|p{3.8cm}|p{3.8cm}|p{3.0cm}|p{3.4cm}|}
+\hline
+\rowcolor{primaryBlue!15}
+\textbf{Django REST Endpoint} & \textbf{.NET 10 Clean Controller} & \textbf{PostgreSQL Table} & \textbf{Core Functionality} \\ \hline
+\texttt{GET /api/rules/} & \texttt{RulesController.Get} & \texttt{cms\_rules} & Serves allocated time (180s), 60 Qs, and 2-round cap. \\ \hline
+\texttt{GET /api/questions/} & \texttt{QuestionController.Get} & \texttt{cms\_questions} & Delivers 60 weighted questions with anti-memorization filtering. \\ \hline
+\texttt{POST /api/participant/...} & \texttt{QuizController.Submit} & \texttt{quizapp\_quizplaysummery} & Ingests AES-256 encrypted scores, runs anti-cheat, saves play. \\ \hline
+\texttt{GET /api/leaderboard/} & \texttt{LeaderboardController.Get} & \texttt{quizapp\_quizplaysummery} & Computes live daily best attempt rankings per MSISDN. \\ \hline
+\texttt{GET /api/participantLeaderboard} & \texttt{LeaderboardController.GetUser} & \texttt{quizapp\_participantdetail} & Returns player's personal rank, score, and profile. \\ \hline
+\texttt{GET /money/processCronDaily...} & \texttt{DailyWinnerJob.Execute} & \texttt{quizapp\_dailywinner...} & 04:30 AM cron: verifies billing and freezes daily winners. \\ \hline
+\texttt{GET /money/processCronWeekly...} & \texttt{WeeklyWinnerJob.Execute} & \texttt{quizapp\_weeklywinner...} & Thursday 05:30 AM cron: consolidates 7-day tournament champions. \\ \hline
+\texttt{GET /money/tWinnerApiFrontend} & \texttt{LeaderboardController.Winners} & \texttt{quizapp\_weeklywinner...} & Renders official Hall of Champions on frontend. \\ \hline
+\end{tabular}
+\caption{Cross-Stack Endpoint \& PostgreSQL Database Mapping Matrix}
+\end{table}
+
+\section{Critical PostgreSQL Table Schemas and Indexing}
+To sustain high concurrency during live 60-question tournaments, the PostgreSQL database utilizes optimized multi-column indexes:
+
+\begin{lstlisting}[language=sql, caption={Essential PostgreSQL Indexes for Sub-Millisecond Queries}]
+-- Index for live daily leaderboard lookups
+CREATE INDEX idx_quizplay_event_date_valid 
+ON quizapp_quizplaysummery (event_id, portal_id, date, is_valid, right_count DESC, time_taken ASC);
+
+-- Index for player attempt history and anti-memorization lookups
+CREATE INDEX idx_quizplay_msisdn_date 
+ON quizapp_quizplaysummery (msisdn, date);
+
+-- Index for weekly tournament consolidation stored procedures
+CREATE INDEX idx_quizplay_weekly_range 
+ON quizapp_quizplaysummery (event_id, date, is_valid) 
+INCLUDE (msisdn, right_count, time_taken, user_id, portal_id);
+\end{lstlisting}
+
+\begin{tcolorbox}[summarybox, title={Chapter Key Takeaways}]
+\begin{itemize}
+    \item .NET 10 Clean Architecture isolates domain business rules from external frameworks and persistence details.
+    \item In-memory mock stores (\texttt{ScoreStore}) have been completely eliminated in favor of direct, verified PostgreSQL database transactions.
+    \item Composite indexing on \texttt{(event\_id, portal\_id, date, is\_valid)} guarantees sub-millisecond query latency even during peak concurrent tournament traffic.
+\end{itemize}
+\end{tcolorbox}

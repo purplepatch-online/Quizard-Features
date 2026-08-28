@@ -1,0 +1,119 @@
+\chapter{The Question Engine: Selection, Difficulty Weighting, and Real-Time Delivery}
+
+\begin{tcolorbox}[storybox, title={The Question Engine in Brief}]
+How does Quizard generate a unique, balanced set of 60 rapid questions in less than 50 milliseconds when thousands of players hit ``Start Quiz'' simultaneously? The Question Engine combines category filtering, anti-memorization exclusions, multi-tier difficulty weighting, and sub-millisecond database ID sampling to serve exciting and fair quiz sessions to every contestant.
+\end{tcolorbox}
+
+\section{The Architecture of the Question Bank}
+In the Quizard database (mapped to \texttt{apps.cms.models.Questions}), tens of thousands of approved questions are curated across diverse categories. Each question entity contains:
+
+\begin{itemize}
+    \item \textbf{Question Text (\texttt{question}):} The Bengali or English trivia query.
+    \item \textbf{Four Options (\texttt{option1}, \texttt{option2}, \texttt{option3}, \texttt{option4}):} The multiple-choice choices presented to the contestant.
+    \item \textbf{Correct Answer (\texttt{ans}):} The authoritative correct answer string (kept confidential on the server or sanitized before client transmission).
+    \item \textbf{Category Identifier (\texttt{category\_id}):} Topic tag (e.g., General Knowledge, BCS, Sports, Science, Literature, Islamic History).
+    \item \textbf{Difficulty Weightage (\texttt{weightage}):} Integer ranging from $1$ (Foundational/Easy) to $6$ (Expert/Hard).
+    \item \textbf{Portal Identifier (\texttt{company\_id}):} Tenant isolation ensuring custom partner content (e.g., Portal 15 for bKash/Quizard Live, Portal 20 for Banglalink, Portal 21 for Robi) remains segregated.
+\end{itemize}
+
+\section{The Question Selection Algorithm}
+When a contestant initiates a quiz via \texttt{GET /api/questions/?rules=34\&portal=15}, the Question Engine executes a multi-step pipeline:
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    node distance=1.3cm,
+    stepbox/.style={rectangle, draw=primaryDark, fill=white, rounded corners=2mm, minimum width=10.5cm, minimum height=0.9cm, align=left, line width=1pt},
+    headerbox/.style={rectangle, draw=primaryBlue, fill=primaryBlue!15, rounded corners=2mm, minimum width=10.5cm, minimum height=0.9cm, align=center, line width=1.2pt}
+]
+    \node[headerbox] (h1) at (0, 0) {\textbf{Step 1: Tenant \& Rule Authorization}\\\scriptsize Validate portal status, retrieve category list $[1, 2, 3, 4, 5]$ and target count $N=60$};
+    \node[stepbox] (s2) at (0, -1.3) {\textbf{Step 2: Anti-Memorization Filtering}\\\scriptsize Exclude question IDs answered by this MSISDN in the last 3 days (\texttt{time\_taken $\ge$ now - 3d})};
+    \node[stepbox] (s3) at (0, -2.6) {\textbf{Step 3: Fast In-Memory ID Sampling}\\\scriptsize Retrieve eligible integer ID pool (\texttt{values\_list('id')}) and execute \texttt{random.sample()}};
+    \node[stepbox] (s4) at (0, -3.9) {\textbf{Step 4: Multi-Tier Difficulty Sorting}\\\scriptsize Retrieve full records for selected IDs and sort by \texttt{weightage} (Easy $\to$ Medium $\to$ Hard)};
+    \node[stepbox] (s5) at (0, -5.2) {\textbf{Step 5: Session Round Creation \& Response Delivery}\\\scriptsize Compute next \texttt{round\_number}, insert tracking placeholder, return sanitized JSON};
+
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (h1) -- (s2);
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (s2) -- (s3);
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (s3) -- (s4);
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (s4) -- (s5);
+\end{tikzpicture}
+\caption{The 5-Stage Dynamic Question Selection Pipeline}
+\end{figure}
+
+\subsection{Why Fast ID Sampling Beats Full Database Sorting}
+Naively executing \texttt{ORDER BY RAND() LIMIT 60} across a database table with 50,000 rows causes full-table scans, disk thrashing, and database CPU spikes during peak traffic.
+
+Quizard achieves instant sub-50ms question serving by pulling only lightweight 4-byte integer IDs into memory:
+\begin{lstlisting}[language=python, caption={Fast ID Sampling Algorithm in Django Backend}]
+# Step 1: Fetch lightweight ID list for approved categories
+all_ids = list(Questions.objects.filter(
+    company_id=portal_id, 
+    category_id__in=approved_categories, 
+    status='approved'
+).values_list('id', flat=True))
+
+# Step 2: High-speed O(K) pseudo-random sampling in memory
+selected_ids = random.sample(all_ids, min(question_count, len(all_ids)))
+
+# Step 3: Fetch only the 60 selected records by Primary Key
+selected_questions = list(Questions.objects.filter(id__in=selected_ids))
+
+# Step 4: Sort progressively by weightage for smooth difficulty ramp
+selected_questions.sort(key=lambda q: q.weightage)
+\end{lstlisting}
+
+\section{The Player Journey: Karim Plays a 60-Question Rapid Match}
+
+\subsection{Session Launch in Chittagong}
+In Chittagong, Karim taps ``Play Tournament''. His phone sends his authentication bearer token to the backend:
+\begin{center}
+    \texttt{GET /api/questions/?rules=34\&portal=15}
+\end{center}
+
+The backend detects that Karim has played 0 rounds today. It calculates:
+$$\text{Current Round Number} = 0 + 1 = 1$$
+It immediately initializes a tracking record in \texttt{quizapp\_quizplaysummery} with status \texttt{IN\_PROGRESS} and returns 60 questions formatted as follows:
+
+\begin{lstlisting}[language=json, caption={Sample Sanitized Question JSON Delivered to Karim's Phone}]
+[
+  {
+    "id": 1042,
+    "question": "Which river is known as the longest river in Bangladesh?",
+    "option1": "Padma",
+    "option2": "Meghna",
+    "option3": "Jamuna",
+    "option4": "Surma",
+    "category": 1,
+    "weightage": 1
+  },
+  {
+    "id": 2891,
+    "question": "What is the official currency of Japan?",
+    "option1": "Yuan",
+    "option2": "Yen",
+    "option3": "Won",
+    "option4": "Ringgit",
+    "category": 2,
+    "weightage": 2
+  }
+]
+\end{lstlisting}
+
+\subsection{Racing Against the 180-Second Clock}
+The 180-second visual timer begins ticking down on Karim's screen. 
+
+\begin{itemize}
+    \item \textbf{Question 1 to 20 (Foundational Tier):} Karim answers 20 general knowledge questions rapidly, needing only 1.8 seconds per question (36 seconds elapsed).
+    \item \textbf{Question 21 to 45 (Intermediate Tier):} Karim tackles BCS science and Bangladesh constitutional history. He maintains focus and answers accurately (80 seconds elapsed, 116 seconds total).
+    \item \textbf{Question 46 to 60 (Expert Tier):} Karim answers complex literature and world geography trivia under time pressure.
+\end{itemize}
+
+At $t = 165\text{ seconds}$, Karim taps the final option. He has answered all **60 questions**, achieving **58 correct answers** with **15 seconds remaining** on his 180-second clock!
+
+\begin{tcolorbox}[summarybox, title={Chapter Key Takeaways}]
+\begin{itemize}
+    \item Quizard avoids expensive \texttt{ORDER BY RAND()} queries by utilizing two-stage integer ID sampling in memory, reducing question delivery latency to under 50 milliseconds.
+    \item Questions are ordered progressively by difficulty weightage, creating a rewarding difficulty ramp from foundational trivia to expert tie-breakers.
+    \item Each question delivery initializes a verifiable session round on the server, ensuring every answer submission is uniquely paired with an active tracking token.
+\end{itemize}
+\end{tcolorbox}

@@ -1,0 +1,270 @@
+\documentclass[11pt,a4paper,oneside]{report}
+
+% --- Packages ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{ae,aecompl,amsfonts}
+\usepackage{amsmath,amssymb}
+\usepackage[margin=1in]{geometry}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tcolorbox}
+\tcbuselibrary{skins,breakable}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric, backgrounds, fit}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.17}
+\usepackage{listings}
+\usepackage[colorlinks=true, linkcolor=blue!80!black, urlcolor=blue!80!black, citecolor=blue!80!black]{hyperref}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{longtable}
+\usepackage{colortbl}
+
+% --- Color Palette ---
+\definecolor{primaryDark}{RGB}{15, 23, 42}       % Slate 900
+\definecolor{primaryBlue}{RGB}{2, 132, 199}      % Sky 600
+\definecolor{accentGreen}{RGB}{16, 185, 129}     % Emerald 500
+\definecolor{accentAmber}{RGB}{245, 158, 11}     % Amber 500
+\definecolor{accentRed}{RGB}{239, 68, 68}        % Red 500
+\definecolor{bgGray}{RGB}{248, 250, 252}         % Slate 50
+\definecolor{cardBorder}{RGB}{226, 232, 240}     % Slate 200
+
+% --- Listings Settings ---
+\lstdefinelanguage{json}{
+    basicstyle=\ttfamily\small\color{primaryDark},
+    string=[s]{"}{"},
+    stringstyle=\color{accentGreen!80!black},
+    commentstyle=\color{gray},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    numbersep=8pt,
+    stepnumber=1,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{cardBorder}
+}
+
+\lstset{
+    backgroundcolor=\color{bgGray},
+    basicstyle=\ttfamily\small\color{primaryDark},
+    keywordstyle=\bfseries\color{primaryBlue},
+    commentstyle=\itshape\color{gray},
+    stringstyle=\color{accentGreen!80!black},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    numbersep=8pt,
+    stepnumber=1,
+    breaklines=true,
+    breakatwhitespace=true,
+    frame=single,
+    rulecolor=\color{cardBorder},
+    tabsize=2,
+    showspaces=false,
+    showstringspaces=false
+}
+
+% --- Custom TColorBox Styles ---
+\tcbset{
+    storybox/.style={
+        colback=primaryBlue!5,
+        colframe=primaryBlue,
+        coltitle=white,
+        fonttitle=\bfseries\sffamily,
+        sharp corners,
+        rounded corners=southeast,
+        arc=3mm,
+        boxrule=1.5pt,
+        left=12pt,
+        right=12pt,
+        top=10pt,
+        bottom=10pt
+    },
+    technicalbox/.style={
+        colback=bgGray,
+        colframe=primaryDark,
+        coltitle=white,
+        fonttitle=\bfseries\sffamily,
+        sharp corners,
+        boxrule=1.5pt,
+        left=12pt,
+        right=12pt,
+        top=10pt,
+        bottom=10pt
+    },
+    summarybox/.style={
+        colback=accentGreen!5,
+        colframe=accentGreen,
+        coltitle=white,
+        fonttitle=\bfseries\sffamily,
+        sharp corners,
+        rounded corners=southwest,
+        arc=3mm,
+        boxrule=1.5pt,
+        left=12pt,
+        right=12pt,
+        top=10pt,
+        bottom=10pt
+    }
+}
+
+% --- Header & Footer ---
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\sffamily\small Quizard Features Storybook: Master Technical Guide}
+\fancyhead[R]{\sffamily\small\thepage}
+\fancyfoot[C]{\sffamily\footnotesize Confidential --- Digital For Good Engineering Documentation}
+\renewcommand{\headrulewidth}{0.6pt}
+\renewcommand{\footrulewidth}{0.6pt}
+
+% --- Chapter & Section Formatting ---
+\titleformat{\chapter}[display]
+  {\normalfont\sffamily\huge\bfseries\color{primaryDark}}{\chaptertitlename\ \thechapter}{15pt}{\Huge}
+\titleformat{\section}
+  {\normalfont\sffamily\Large\bfseries\color{primaryBlue}}{\thesection}{1em}{}
+\titleformat{\subsection}
+  {\normalfont\sffamily\large\bfseries\color{primaryDark}}{\thesubsection}{1em}{}
+
+\begin{document}
+
+% --- Title Page ---
+\begin{titlepage}
+    \centering
+    \vspace*{1.5cm}
+    
+    {\Huge\bfseries\sffamily\color{primaryDark} QUIZARD FEATURES STORYBOOK}\\[0.4cm]
+    {\LARGE\bfseries\sffamily\color{primaryBlue} Master Architecture, Gameplay Mechanics, and Tournament Systems}\\[0.8cm]
+    
+    \rule{\linewidth}{1.5pt}\\[1.0cm]
+    
+    \begin{tcolorbox}[colback=primaryBlue!5,colframe=primaryBlue,width=0.95\linewidth,arc=2mm]
+        \centering
+        \large\sffamily
+        A Comprehensive Technical Specification and Narrative Guide for Decision Makers, Product Managers, and Backend Software Engineers
+    \end{tcolorbox}
+    
+    \vspace{1.5cm}
+    
+    \begin{tcolorbox}[colback=white,colframe=cardBorder,width=0.95\linewidth,arc=2mm,title=\textbf{\sffamily Core System Pillars Covered}]
+        \begin{itemize}\small
+            \item \textbf{Dynamic Rules Governance:} Server-driven timers (180s), 60-question sets, and 2-attempt daily limits
+            \item \textbf{High-Speed Question Engine:} Sub-50ms ID sampling, difficulty weighting, and anti-memorization exclusions
+            \item \textbf{Military-Grade Cryptography:} AES-256-CBC payload encryption and anti-cheat answering velocity verification
+            \item \textbf{Live Leaderboards \& Tie-Breaking:} Real-time SQL window ranking and strict time-based tie resolution
+            \item \textbf{Automated Tournament Crons:} 04:30 AM daily billing verification and Thursday 05:30 AM weekly championships
+            \item \textbf{Clean Architecture Migration:} Transitioning from Django REST to high-throughput .NET 10 on PostgreSQL
+            \item \textbf{High-Velocity Telemetry Gateway:} Dedicated FastAPI microservice (\texttt{cms.quizard.live}) on MongoDB \& Redis
+            \item \textbf{CMS Operations \& Telco Billing:} Question approval lifecycles, Wordly, Speed Math, DOB, and bKash passes
+            \item \textbf{Financial Reporting \& BI Engine:} Multi-tier winner audits, automated bKash B2C payouts, and revenue analytics
+            \item \textbf{Score-Driven Performance Bands:} 6 score-driven tiers (0 to 60) with asymmetric delta adjustments
+            \item \textbf{XP Ledger \& Linear Streaks:} Linear daily streak progression ($+20\text{ XP}\times n$) with giant Day 15 milestone surge
+            \item \textbf{Rank Velocity \& Adaptive Challenge:} Live $\uparrow/\downarrow$ glyphs, personalized cards, and 10s fast timers
+        \end{itemize}
+    \end{tcolorbox}
+    
+    \vfill
+    {\bfseries Author:} Engineering Architecture Team\\
+    {\bfseries Ecosystem:} Next.js 16 Frontend $\longleftrightarrow$ Quizard-API (FastAPI / MongoDB) $\longleftrightarrow$ .NET 10 (PostgreSQL)\\
+    {\bfseries Database Cluster:} PostgreSQL Enterprise Cluster (Host: 103.174.50.155) + MongoDB Telemetry Cluster\\
+    {\bfseries Date:} August 2026
+\end{titlepage}
+
+% --- Table of Contents ---
+\tableofcontents
+\newpage
+
+% --- Executive Overview ---
+\chapter*{Executive Overview: The Quizard Platform}
+\addcontentsline{toc}{chapter}{Executive Overview: The Quizard Platform}
+
+\begin{tcolorbox}[storybox, title={Platform Mission}]
+Quizard is Bangladesh's premier real-time interactive quiz and tournament platform, engaging hundreds of thousands of concurrent players across web and telecommunication partner channels (bKash, Banglalink, Robi). 
+
+To ensure absolute competitive integrity, fair prize distribution, and instantaneous responsiveness, Quizard combines server-authoritative game governance, sub-50ms dynamic question generation, end-to-end payload cryptography, and automated tournament consolidation.
+\end{tcolorbox}
+
+\section*{The End-to-End System Architecture}
+The diagram below illustrates the comprehensive lifecycle of a player's journey through Quizard:
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    node distance=2.2cm,
+    box/.style={rectangle, draw=primaryDark, fill=white, rounded corners=2mm, minimum width=2.6cm, minimum height=1.1cm, align=center, line width=1pt},
+    apibox/.style={rectangle, draw=primaryBlue, fill=primaryBlue!10, rounded corners=2mm, minimum width=2.8cm, minimum height=1.1cm, align=center, line width=1.2pt},
+    dbbox/.style={rectangle, draw=accentGreen, fill=accentGreen!10, rounded corners=2mm, minimum width=2.8cm, minimum height=1.1cm, align=center, line width=1.2pt},
+    cronbox/.style={rectangle, draw=accentAmber, fill=accentAmber!10, dashed, rounded corners=2mm, minimum width=2.8cm, minimum height=1.1cm, align=center, line width=1.2pt}
+]
+    % Nodes
+    \node[box] (phone) at (0, 0) {\textbf{Player Phone}\\\scriptsize Next.js App / bKash};
+    \node[apibox] (api) at (5.2, 0) {\textbf{Backend API}\\\scriptsize Security \& Rules};
+    \node[dbbox] (db) at (10.4, 0) {\textbf{PostgreSQL DB}\\\scriptsize Raw Play Records};
+
+    \node[cronbox] (cron) at (5.2, -2.2) {\textbf{Automated Crons}\\\scriptsize Daily (4:30 AM) \& Weekly};
+    \node[dbbox] (winners) at (10.4, -2.2) {\textbf{Official Winners}\\\scriptsize Daily \& Weekly Tables};
+
+    % Arrows
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (phone) -- node[above, yshift=2pt]{\scriptsize 1. Start / Submit} (api);
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (api) -- node[above, yshift=2pt]{\scriptsize 2. Save Valid Play} (db);
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (cron) -- node[right, xshift=2pt]{\scriptsize 3. Check Billing} (api);
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (cron) -- node[above, yshift=2pt]{\scriptsize 4. Save Winners} (winners);
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (phone.south) |- ++(0,-2.7) -| node[pos=0.25, below]{\scriptsize 5. View Declared Winners (Daily \& Weekly)} (winners.south);
+\end{tikzpicture}
+\caption{Quizard End-to-End Competition and Winner Lifecycle}
+\end{figure}
+
+\newpage
+
+% --- Chapters Inclusion ---
+\input{chapters/chapter1_rules_engine_governance}
+\newpage
+
+\input{chapters/chapter2_gameplay_question_engine}
+\newpage
+
+\input{chapters/chapter3_security_anticheat_scoring}
+\newpage
+
+\input{chapters/chapter4_leaderboards_tournaments_winners}
+\newpage
+
+\input{chapters/chapter5_api_architecture_dotnet_migration}
+\newpage
+
+\input{chapters/chapter6_cms_fastapi_telemetry_service}
+\newpage
+
+\input{chapters/chapter7_cms_admin_multigame_ecosystem}
+\newpage
+
+\input{chapters/chapter8_reporting_analytics_payouts}
+\newpage
+
+\input{chapters/chapter9_rating_algorithm_score_bands}
+\newpage
+
+\input{chapters/chapter10_xp_ledger_linear_streaks_badges}
+\newpage
+
+\input{chapters/chapter11_rank_velocity_personalization_adaptive}
+\newpage
+
+% --- Appendix & Summary ---
+\chapter{Technical Glossary and Reference Guide}
+
+\section{Glossary of Core Domain Entities}
+\begin{description}
+    \item[\textbf{MSISDN:}] Mobile Station International Subscriber Directory Number (the player's unique mobile phone number in Bangladesh, e.g., \texttt{01711000001}).
+    \item[\textbf{Event / Rule ID:}] Unique numeric identifier for a tournament competition rule set (e.g., \texttt{Event 34 = Daily Rapid Tournament}, \texttt{Event 75 = Mega Weekly Championship}).
+    \item[\textbf{Portal ID:}] Tenant identifier providing multi-tenant isolation (e.g., \texttt{15 = Quizard Web / bKash}, \texttt{20 = Banglalink}, \texttt{21 = Robi}).
+    \item[\textbf{AES-256-CBC:}] Advanced Encryption Standard with 256-bit key length operating in Cipher Block Chaining mode, securing all client score transmissions.
+    \item[\textbf{Dense Rank:}] A database ranking function where identical scores receive identical rank numbers without creating gaps in consecutive rank assignments.
+    \item[\textbf{Velocity Check:}] Anti-cheat validation ensuring the rate of answered questions does not exceed human biological reaction thresholds ($\le 1.5\text{ answers/sec}$).
+\end{description}
+
+\begin{tcolorbox}[summarybox, title={Final Architecture Conclusion}]
+Quizard's architecture represents a gold standard for high-performance, real-time gaming in emerging markets. By coupling dynamic rules governance, sub-50ms question sampling, end-to-end cryptographic integrity, and automated financial verification, the platform delivers an engaging and trustworthy experience to millions of contestants.
+\end{tcolorbox}
+
+\end{document}

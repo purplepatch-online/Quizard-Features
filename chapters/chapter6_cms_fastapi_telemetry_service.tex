@@ -1,0 +1,157 @@
+\chapter{The Gateway of Speed: The FastAPI Microservice and CMS Engine}
+
+\begin{tcolorbox}[storybox, title={The Quizard-API (cms.quizard.live) in Brief}]
+While the Django backend and .NET Clean Architecture manage core business transactions, a specialized, asynchronous microservice---**Quizard-API** (hosted in production at \texttt{cms.quizard.live})---powers real-time campaign telemetry, high-throughput MongoDB activity logging, sub-5ms cached rules delivery, and distributed token verification.
+\end{tcolorbox}
+
+\section{The Need for a Dedicated High-Velocity Microservice}
+During national tournament campaigns across Bangladesh, hundreds of thousands of concurrent users interact with Quizard through web browsers, the bKash In-App portal, and telecom partner portals (Banglalink, Robi). 
+
+Every time a player navigates between screens, clicks a tournament banner, or fetches the latest rules, an HTTP request is generated. If all of this high-frequency traffic were routed directly through traditional relational database queries, relational connection pools would become saturated, introducing latency into critical quiz play and score submission workflows.
+
+To solve this, the engineering team decoupled high-velocity, read-heavy, and event-streaming workloads into **Quizard-API** (built on **FastAPI**, **Motor AsyncIO for MongoDB**, **Redis**, and **PostgreSQL**).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    node distance=2.2cm,
+    clientbox/.style={rectangle, draw=primaryDark, fill=white, rounded corners=2mm, minimum width=2.8cm, minimum height=1.0cm, align=center, line width=1pt},
+    fastapibox/.style={rectangle, draw=primaryBlue, fill=primaryBlue!15, rounded corners=2mm, minimum width=3.4cm, minimum height=1.0cm, align=center, line width=1.2pt},
+    mongobox/.style={rectangle, draw=accentGreen, fill=accentGreen!10, rounded corners=2mm, minimum width=2.8cm, minimum height=1.0cm, align=center, line width=1.2pt},
+    pgbox/.style={rectangle, draw=accentAmber, fill=accentAmber!10, rounded corners=2mm, minimum width=2.8cm, minimum height=1.0cm, align=center, line width=1.2pt}
+]
+    \node[clientbox] (app) at (0, 0) {\textbf{Contestant Phone}\\\scriptsize Next.js / bKash App};
+    \node[fastapibox] (fastapi) at (5.5, 0) {\textbf{Quizard-API Gateway}\\\scriptsize \texttt{cms.quizard.live} (FastAPI)};
+    \node[mongobox] (mongo) at (11.0, 1.4) {\textbf{MongoDB Cluster}\\\scriptsize \texttt{activity\_logs} Stream};
+    \node[pgbox] (pg) at (11.0, -1.4) {\textbf{PostgreSQL Cluster}\\\scriptsize \texttt{cms\_rules} \& \texttt{authtoken}};
+
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (app) -- node[above, yshift=2pt]{\scriptsize 1. Telemetry \& Rules} (fastapi);
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (fastapi) -- node[above, sloped, yshift=3pt]{\scriptsize 2a. Async Logs ($<2\text{ms}$)} (mongo);
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (fastapi) -- node[below, sloped, yshift=-3pt]{\scriptsize 2b. Cached Rules \& Tokens} (pg);
+\end{tikzpicture}
+\caption{Quizard-API (\texttt{cms.quizard.live}) Asynchronous Ingestion \& Caching Architecture}
+\end{figure}
+
+\section{Core Responsibilities of Quizard-API}
+
+\begin{itemize}
+    \item \textbf{High-Velocity Activity Logging (\texttt{/activity-logs/}):} Ingests clickstreams, page views, campaign attribution IDs (\texttt{cid}), IP addresses, user agents, and portal tags into MongoDB asynchronously in under 2 milliseconds.
+    \item \textbf{Hourly Aggregation Pipelines (\texttt{/activity-logs/all\_log\_hourly}):} Executes MongoDB aggregation pipelines to group millions of raw logs into hourly summaries by campaign, portal, and page for executive marketing dashboards.
+    \item \textbf{Sub-5ms Cached Rules Serving (\texttt{/rules/}, \texttt{/rules/cached}):} Serves tournament rule configurations (180s timer, 60 questions, 2-round cap) from memory/JSON cache to ensure instantaneous client page loading.
+    \item \textbf{Token Authentication Proxy (\texttt{/tokens/tokens/\{key\}}):} Performs low-overhead token validation for microservices and frontend clients directly against the PostgreSQL \texttt{authtoken\_token} table.
+    \item \textbf{CMS Media Asset Management (\texttt{/rules/upload-logo/}):} Handles secure multipart uploads for partner logos, banners, and tournament artwork.
+\end{itemize}
+
+\section{Real-World Stories and Concrete Examples}
+
+\subsection{Story 1: Rahim's Campaign Click and Asynchronous Telemetry}
+It is 04:00 PM during a major holiday tournament campaign. Rahim is browsing the bKash payment app and sees a promotional banner with campaign tag \texttt{cid="bkash\_victory\_2026"}. 
+
+When Rahim taps the banner:
+\begin{enumerate}
+    \item His phone opens the Quizard web application and automatically dispatches a non-blocking background telemetry beacon:
+    \begin{center}
+        \texttt{POST https://cms.quizard.live/activity-logs/}
+    \end{center}
+    
+    \item The request body contains campaign metadata:
+    \begin{lstlisting}[language=json, caption={Activity Log Ingestion JSON Payload}]
+{
+  "msisdn": "01711000001",
+  "cid": "bkash_victory_2026",
+  "company": 15,
+  "page_name": "tournament_entry_page",
+  "source_url": "https://quizard.live/tournament?cid=bkash_victory_2026",
+  "useragent": "Mozilla/5.0 (Linux; Android 14; Pixel 8)"
+}
+    \end{lstlisting}
+
+    \item \textbf{Under 2ms Ingestion:} FastAPI extracts Rahim's client IP (\texttt{get\_client\_ip}), adds the UTC timestamp and hourly partition key (\texttt{ymdh}), and writes the record directly to MongoDB:
+    \begin{lstlisting}[language=python, caption={Asynchronous Ingestion Handler in Quizard-API}]
+@router.post("/")
+async def create_activity_log(request: Request):
+    ip = get_client_ip(request)
+    log_data = await request.json()
+    now = datetime.now()
+    log_data["ip"] = ip
+    log_data["created_at"] = now
+    log_data["ymdh"] = now.replace(minute=0, second=0, microsecond=0)
+    log_data["date"] = now.strftime('%Y-%m-%d')
+
+    # Instant Non-Blocking MongoDB Async Insertion
+    await activity_logs_collection.insert_one(log_data)
+    return "OK"
+    \end{lstlisting}
+
+    \item Rahim experiences zero UI lag or stuttering because telemetry ingestion is completely non-blocking and isolated from the transactional database.
+\end{enumerate}
+
+\subsection{Story 2: Marketing Executives Analyze Hourly Campaign ROI}
+At 05:00 PM, the marketing team at Digital For Good evaluates the performance of the \texttt{bkash\_victory\_2026} campaign. 
+
+Instead of executing slow \texttt{COUNT(*)} queries on millions of unindexed rows, the analytics dashboard calls:
+\begin{center}
+    \texttt{GET https://cms.quizard.live/activity-logs/all\_log\_hourly?hour=1}
+\end{center}
+
+FastAPI executes an optimized MongoDB aggregation pipeline, grouping by campaign ID, page name, and portal:
+
+\begin{lstlisting}[language=python, caption={MongoDB Aggregation Pipeline for Hourly Analytics}]
+pipeline = [
+    { '$match': { 'ymdh': target_hour } },
+    {
+        '$group': {
+            '_id': {
+                'cid': '$cid',
+                'company': '$company',
+                'page_name': '$page_name',
+                'date': '$date'
+            },
+            'total_impressions': { '$sum': 1 }
+        }
+    }
+]
+result = await activity_logs_collection.aggregate(pipeline).to_list(None)
+\end{lstlisting}
+
+The marketing team instantly sees that **48,500 unique contestants** entered the tournament through Rahim's campaign link within that single hour.
+
+\subsection{Story 3: Karim Fetches Instant Cached Rules}
+When Karim starts his tournament round in Chittagong, his app requests the active rules from \texttt{cms.quizard.live}:
+\begin{center}
+    \texttt{GET https://cms.quizard.live/rules/?portal=15\&is\_event=true}
+\end{center}
+
+Quizard-API checks its memory-cached rules snapshot:
+\begin{itemize}
+    \item \textbf{Duration:} 180 seconds.
+    \item \textbf{Question Set:} 60 questions.
+    \item \textbf{Round Cap:} 2 attempts per day.
+    \item \textbf{Prize:} 10,000 BDT.
+\end{itemize}
+The response is delivered to Karim's screen in **3 milliseconds**, allowing the quiz interface to render immediately without waiting for relational SQL queries.
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{|p{3.8cm}|p{1.4cm}|p{2.8cm}|p{6.0cm}|}
+\hline
+\rowcolor{primaryBlue!15}
+\textbf{Endpoint} & \textbf{Method} & \textbf{Data Store} & \textbf{Core Functionality} \\ \hline
+\texttt{/activity-logs/} & \texttt{POST} & MongoDB & Ingests pageviews, clicks, and campaign attribution in $<2\text{ms}$. \\ \hline
+\texttt{/activity-logs/all\_log} & \texttt{GET} & MongoDB & Aggregates daily telemetry across portals and campaigns. \\ \hline
+\texttt{/activity-logs/all\_log\_hourly} & \texttt{GET} & MongoDB & Groups hourly engagement metrics for real-time analytics. \\ \hline
+\texttt{/rules/} & \texttt{GET} & PostgreSQL / Cache & Returns cached rules (60 Qs, 180s, 2 rounds) in sub-5ms. \\ \hline
+\texttt{/rules/upload-logo/} & \texttt{POST} & Static Disk & Uploads partner logos and campaign banner artwork. \\ \hline
+\texttt{/tokens/tokens/\{key\}} & \texttt{GET} & PostgreSQL & Validates bearer tokens for lightweight microservice clients. \\ \hline
+\end{tabular}
+\caption{Quizard-API (\texttt{cms.quizard.live}) Microservice Endpoint Directory}
+\end{table}
+
+\begin{tcolorbox}[summarybox, title={Chapter Key Takeaways}]
+\begin{itemize}
+    \item \texttt{cms.quizard.live} is powered by **Quizard-API**, an asynchronous FastAPI microservice built to offload telemetry, impression tracking, and cached rule distribution from the core backend.
+    \item Telemetry logs are stored in **MongoDB** using non-blocking async IO, processing thousands of simultaneous events per second without degrading gameplay performance.
+    \item The separation of transactional quiz gameplay (.NET 10 / Django on PostgreSQL) from high-velocity telemetry (FastAPI on MongoDB) ensures scalability, resilience, and sub-50ms responsiveness platform-wide.
+\end{itemize}
+\end{tcolorbox}

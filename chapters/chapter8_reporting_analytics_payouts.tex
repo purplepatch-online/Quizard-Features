@@ -1,0 +1,117 @@
+\chapter{The Financial and Analytics Hub: Reporting Engine, Payouts, and Business Intelligence}
+
+\begin{tcolorbox}[storybox, title={The Reporting Engine in Brief}]
+Transparency and financial precision are essential for operating a national real-money tournament platform. Quizard features an enterprise Reporting and Business Intelligence (BI) engine (\texttt{apps.disbursmentReport}, \texttt{apps.allReportGraph}, \texttt{reporting\_app}) that consolidates daily player rankings, validates telco subscriber payments, triggers automated bKash B2C cash disbursements, and renders real-time revenue and retention analytics.
+\end{tcolorbox}
+
+\section{The Architecture of the Reporting Engine}
+The Reporting Engine unifies data from live gameplay (\texttt{quizapp\_quizplaysummery}), carrier billing logs (\texttt{subscription\_subscriptions}), and payment webhooks into actionable operational reports and automated financial payout workflows.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    node distance=2.2cm,
+    box/.style={rectangle, draw=primaryDark, fill=white, rounded corners=2mm, minimum width=2.8cm, minimum height=1.0cm, align=center, line width=1pt},
+    apibox/.style={rectangle, draw=primaryBlue, fill=primaryBlue!10, rounded corners=2mm, minimum width=3.0cm, minimum height=1.0cm, align=center, line width=1.2pt},
+    payoutbox/.style={rectangle, draw=accentGreen, fill=accentGreen!10, rounded corners=2mm, minimum width=3.0cm, minimum height=1.0cm, align=center, line width=1.2pt}
+]
+    \node[box] (audit) at (0, 0) {\textbf{Finance Auditor}\\\scriptsize Admin Dashboard};
+    \node[apibox] (engine) at (5.2, 0) {\textbf{Reporting Engine}\\\scriptsize \texttt{apps.disbursmentReport}};
+    \node[payoutbox] (bkash) at (10.4, 0) {\textbf{bKash B2C Gateway}\\\scriptsize Automated Wallet Payout};
+
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (audit) -- node[above, yshift=2pt]{\scriptsize 1. Review Winners} (engine);
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (engine) -- node[above, yshift=2pt]{\scriptsize 2. Batch Payout Request} (bkash);
+    \draw[-{Latex[length=2.5mm]}, line width=1pt, dashed] (bkash) -- node[below, yshift=-2pt]{\scriptsize 3. Disbursement Receipt} (engine);
+    \draw[-{Latex[length=2.5mm]}, line width=1pt, dashed] (engine) -- node[below, yshift=-2pt]{\scriptsize 4. Audit Trail \& SMS} (audit);
+\end{tikzpicture}
+\caption{The Automated Prize Disbursement and Financial Reconciliation Lifecycle}
+\end{figure}
+
+\section{Core Modules of the Reporting Suite}
+
+\subsection{1. Daily and Weekly Tournament Winner Reports}
+\begin{itemize}
+    \item \textbf{Daily Winner Report (\texttt{DailyWinnerViewSet}, \texttt{/report/dailyWinner.html}):} Lists verified top scorers from yesterday, cross-referenced with successful carrier billing status (\texttt{paymentStatus = 'SUCCEEDED\_PAYMENT'}).
+    \item \textbf{Weekly Mega Championship Report (\texttt{WeeklyWinnerViewSet}, \texttt{/report/weeklyWinner.html}):} Audits the 7-day tournament leaderboard across all active rules (\texttt{Event 34}, \texttt{Event 150}) with customizable minimum payment count filters (\texttt{payment\_count $\ge 3$}).
+\end{itemize}
+
+\subsection{2. Micro-Prize Tier Reporting (5 TK and 10 TK Bounties)}
+To reward broad participation beyond the top 3 grand champions, Quizard executes micro-prize reward tiers:
+\begin{itemize}
+    \item \textbf{5 TK Winner Suite (\texttt{5tkWinner}, \texttt{FiveTkReport}):} Stored procedures identify runners-up who achieve threshold scores (e.g., $\text{Score} \ge 25$) within specific rank brackets (e.g., Ranks 4 to 100).
+    \item \textbf{10 TK Winner Suite (\texttt{10tkWinner}, \texttt{TenTkWinnerSummaryViewSet}):} Consolidates high-accuracy players eligible for 10 BDT wallet top-ups.
+\end{itemize}
+
+\subsection{3. Wordly Word Puzzle Winner Analytics}
+In \texttt{apps.disbursmentReport}, dedicated endpoints (\texttt{WordlyDailyWinnerViewSet}, \texttt{WordlyDailyDisbursmentViews}, \texttt{WWeeklyWinner}) audit Bengali and English daily word puzzle accuracy streaks, ensuring Wordly champions are verified before prize payout.
+
+\subsection{4. Referral Tracking and Bounties (\texttt{PrizeOnReferral})}
+When existing contestants invite peers using referral codes:
+\begin{itemize}
+    \item The referral engine tracks successful onboarding through \texttt{report\_referhistory}.
+    \item \texttt{PrizeOnReferral} generates automated referral bonus reports, crediting cash bounties once the referee completes their first paid tournament attempt.
+\end{itemize}
+
+\subsection{5. Churn-Back and Win-Back Analytics (\texttt{ChurnBackReportViewSet})}
+Analyzes lapsed subscribers re-engaging with the platform, calculating promotional return-on-investment (ROI) through stored procedure \texttt{ChurnBackCashBack}.
+
+\subsection{6. Real-Time Revenue and Charging Graphs (\texttt{apps.allReportGraph})}
+Powers administrative visual analytics through \texttt{graphDataApi}:
+\begin{itemize}
+    \item \textbf{Daily Revenue Trends (\texttt{DailyCharging}):} Real-time revenue graphs tracking carrier billing across bKash, Banglalink, Grameenphone, and Robi.
+    \item \textbf{Paid Subscriber Growth (\texttt{NewlyJoinedPaidUser}):} Funnel analysis of new registrations converting to paying subscribers.
+    \item \textbf{DAU and Play Volume:} Hourly volume of tournament rounds played nationwide.
+\end{itemize}
+
+\section{Real-World Scenario: Tanima Audits and Executes Weekly Payouts}
+In Dhaka, Tanima is the Head of Financial Operations at Digital For Good. Every Thursday morning at 09:30 AM, she oversees the national tournament prize disbursement:
+
+\begin{enumerate}
+    \item \textbf{Leaderboard Verification:} Tanima opens \texttt{/report/weeklyWinner.html}. She reviews the frozen winner roster generated by the 05:30 AM weekly cron:
+    \begin{itemize}
+        \item \textbf{Rank 1:} Ayesha in Rajshahi (59/60 in 135s, 7 successful billing cycles) $\implies$ \textbf{25,000 BDT}.
+        \item \textbf{Rank 2:} Salma in Sylhet (59/60 in 150s, 7 successful billing cycles) $\implies$ \textbf{10,000 BDT}.
+        \item \textbf{Rank 3:} Rahim in Dhaka (58/60 in 140s, 7 successful billing cycles) $\implies$ \textbf{5,000 BDT}.
+        \item \textbf{Ranks 4--50:} Micro-prize recipients (5 TK and 10 TK bonuses).
+    \end{itemize}
+    
+    \item \textbf{Automated bKash Batch Disbursement:} With one click, Tanima authorizes the payout batch. The backend connects directly to the bKash Merchant B2C Disbursement API:
+    \begin{lstlisting}[language=python, caption={bKash B2C Merchant Payout Request Structure}]
+payload = {
+    "merchantInvoiceNumber": f"QUIZARD-WEEKLY-{event_id}-{winner.id}",
+    "receiverMSISDN": winner.msisdn,
+    "amount": winner.prize_amount,
+    "currency": "BDT",
+    "intent": "tournament_prize_disbursement"
+}
+response = requests.post(f"{BKASH_API_URL}/b2cPayment", json=payload, headers=auth_headers)
+    \end{lstlisting}
+
+    \item \textbf{Instant Confirmation:} Within seconds, bKash debits the merchant disbursement account and credits Ayesha's, Salma's, and Rahim's mobile wallets. Automated SMS notifications confirm the payouts, and immutable transaction IDs are recorded in \texttt{UserMigrationAudit}.
+\end{enumerate}
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\begin{tabular}{|p{4.2cm}|c|p{3.2cm}|p{6.4cm}|}
+\hline
+\rowcolor{primaryBlue!15}
+\textbf{Reporting Endpoint} & \textbf{Method} & \textbf{Data Model / View} & \textbf{Operational Function} \\ \hline
+\texttt{/report/dailyWinner.html} & \texttt{GET} & \texttt{DailyWinnerViewSet} & Audits yesterday's verified top daily winners. \\ \hline
+\texttt{/report/weeklyWinner.html} & \texttt{GET} & \texttt{WeeklyWinnerViewSet} & Consolidates 7-day tournament grand prize winners. \\ \hline
+\texttt{/report/fivetkWinner.html} & \texttt{GET} & \texttt{FiveTkWinnerViewSet} & Calculates 5 TK micro-prize participant bounties. \\ \hline
+\texttt{/report/wordlyDailytk.html}& \texttt{GET} & \texttt{WordlyDailyWinner...}& Reviews Wordly daily puzzle accuracy streaks. \\ \hline
+\texttt{/report/referral.html} & \texttt{GET} & \texttt{PrizeOnReferral} & Audits player referral bounties and bonuses. \\ \hline
+\texttt{/api/graphDataApi/...} & \texttt{GET} & \texttt{DailyCharging} & Renders visual charts for daily revenue and DAU. \\ \hline
+\end{tabular}
+\caption{Comprehensive Reporting \& Financial Analytics Directory}
+\end{table}
+
+\begin{tcolorbox}[summarybox, title={Chapter Key Takeaways}]
+\begin{itemize}
+    \item The Reporting Engine bridges competitive gameplay with carrier billing, ensuring prize disbursements are awarded exclusively to legitimate, billed subscribers.
+    \item Multi-tier prize reports support grand tournament awards as well as 5 TK and 10 TK micro-prize participation incentives.
+    \item Automated integration with the bKash Merchant B2C API delivers audited cash prizes directly to contestants' digital wallets in real time.
+    \item Real-time graphical analytics provide management with instant visibility into daily active users, subscription growth, and revenue performance across all telecom portals.
+\end{itemize}
+\end{tcolorbox}

@@ -1,0 +1,77 @@
+\chapter{Rank Velocity, Profile Personalization, and Adaptive Live Experiences}
+
+\begin{tcolorbox}[storybox, title={Advanced Engagement Architecture in Brief}]
+Beyond static leaderboard snapshots and generic home screens, modern competitive gaming requires dynamic feedback loops. Quizard introduces real-time leaderboard rank-velocity indicators, server-driven personalized profile messaging, and adaptive difficulty modes designed to maximize player retention across its multi-game ecosystem.
+\end{tcolorbox}
+
+\section{Real-Time Leaderboard Rank Velocity Indicators}
+Leaderboards can feel static if contestants cannot observe the immediate impact of their latest tournament attempts. Quizard introduces visual velocity indicators:
+
+\begin{itemize}
+    \item \textbf{Surging Upward ($\boldsymbol{\uparrow 5}$ in Emerald Green):} Indicates the player climbed 5 positions on today's leaderboard since their prior attempt.
+    \item \textbf{Slipping Downward ($\boldsymbol{\downarrow 2}$ in Crimson Red):} Indicates the player was overtaken by competing participants.
+    \item \textbf{Holding Position ($=$ in Slate Gray):} Indicates steady equilibrium.
+    \item \textbf{Points to Next Tier Gap:} Computes and displays the exact score difference needed to break into the Top 10:
+    \begin{equation}
+    S_{\text{gap}} = \max\left(1, S_{\text{rank 10}} - S_{\text{player}} + 1\right)
+    \end{equation}
+\end{itemize}
+
+\section{Server-Driven Profile Personalization}
+Data audits revealed that unsubscribed players achieve high accuracy but churn because they are unaware of cash prize eligibility, and 96.6\% of active players only ever play one game. The server evaluates player metrics on every profile request and serves targeted action cards:
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    node distance=1.4cm,
+    card/.style={rectangle, draw=primaryBlue, fill=primaryBlue!5, rounded corners=2mm, minimum width=11.5cm, minimum height=1.0cm, align=left, line width=1.1pt},
+    goldcard/.style={rectangle, draw=accentAmber, fill=accentAmber!10, rounded corners=2mm, minimum width=11.5cm, minimum height=1.0cm, align=left, line width=1.2pt}
+]
+    \node[goldcard] (c1) at (0, 0) {\textbf{High-Performer Conversion Card (Unsubscribed Players)}\\\scriptsize \textit{``You scored 54/60 in Tournament! Subscribe to bKash Daily (2 BDT) to qualify for the 25,000 BDT Grand Prize.''}};
+    \node[card] (c2) at (0, -1.5) {\textbf{Ecosystem Cross-Sell Discovery Card (Single-Game Players)}\\\scriptsize \textit{``You dominate BCS Trivia! Try the Bengali 5-letter Wordly challenge and win 500 BDT daily.''}};
+    \node[card] (c3) at (0, -3.0) {\textbf{Encouragement \& Skill Booster Card (Low-Accuracy Players)}\\\scriptsize \textit{``Keep sharpening your reflexes! Play the Speed Math Sprint mode to build mental velocity.''}};
+\end{tikzpicture}
+\caption{Dynamic Server-Driven Profile Personalization Cards}
+\end{figure}
+
+\section{Adaptive Difficulty and High-Experience Fast Timers}
+For contestants who achieve sustained Master and Grandmaster ratings across consecutive tournaments, Quizard introduces an optional Adaptive Challenge Mode:
+\begin{itemize}
+    \item \textbf{Per-Question 10-Second Countdown:} Replaces the total 180s round timer with an aggressive 10-second per-question timer.
+    \item \textbf{Automatic Progression:} If unanswered within 10 seconds, the question auto-submits as incorrect and immediately advances.
+    \item \textbf{Grandmaster Rating Bonus:} Successful completion under adaptive mode awards an additional $+5$ rating premium.
+\end{itemize}
+
+\section{Database Schema and API Architecture}
+
+\subsection{1. REST Endpoints Specification}
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{|p{6.2cm}|c|p{7.5cm}|}
+\hline
+\rowcolor{primaryBlue!15}
+\textbf{Endpoint} & \textbf{Method} & \textbf{Payload / Response Description} \\ \hline
+\texttt{/api/participantProfile/}\newline\texttt{user\_leaderboard/} & \texttt{GET} & Returns player rank with \texttt{rank\_delta} ($\uparrow/\downarrow/=$) and \texttt{points\_to\_top10}. \\ \hline
+\texttt{/api/participantProfile/}\newline\texttt{playing\_history/} & \texttt{GET} & Returns match history alongside server-generated \texttt{personalized\_message}. \\ \hline
+\end{tabular}
+\caption{Leaderboard Velocity and Personalization REST Endpoints}
+\end{table}
+
+\section{Real-World Scenario: Rafiq's Leaderboard Surge}
+In Khulna, Rafiq plays his second daily attempt at 08:30 PM:
+
+\begin{enumerate}
+    \item Rafiq scores 56/60 in 115 seconds.
+    \item When he opens the leaderboard, a glowing $\boldsymbol{\uparrow 4}$ appears beside his name as he leaps from Rank 12 to Rank 8.
+    \item The banner beneath his rank displays: \textit{``You are only 2 points away from the Top 5!''}
+    \item Below his stats, a personalized card recommends: \textit{``You have 1 attempt remaining today—play now to secure your weekly champion prize!''}
+\end{enumerate}
+
+\begin{tcolorbox}[summarybox, title={Chapter Key Takeaways}]
+\begin{itemize}
+    \item Rank-velocity indicators ($\uparrow/\downarrow$) create visceral competitive feedback after every completed match.
+    \item Server-driven personalization cards convert high-performing unsubscribed contestants and drive cross-sell traffic across all 4 quiz genres.
+    \item Adaptive fast-timer modes provide high-skill players with engaging grandmaster challenges.
+\end{itemize}
+\end{tcolorbox}
