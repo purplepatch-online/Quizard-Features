@@ -1,0 +1,212 @@
+% ============================================================================
+% CHAPTER 12: AUTHENTICATION, IDENTITY LIFECYCLE, MULTI-TENANT SESSIONS, AND LOGOUT
+% ============================================================================
+\chapter{Authentication, Identity Lifecycle, Multi-Tenant Sessions, and Logout}
+
+\begin{tcolorbox}[storybox, title={The Story of Nadia's Seamless Login and Secure Sign-Out}]
+It is 08:30 PM on a Friday evening in Chittagong. Nadia, an aspiring civil service candidate and regular tournament player, opens the Quizard application on her Android smartphone. She enters her mobile number to compete in the daily tournament.
+
+Behind the glass screen, a high-speed identity orchestration takes place in less than \textbf{35 milliseconds}:
+\begin{enumerate}
+    \item Her phone number is normalized to a canonical format regardless of how she typed it (\texttt{01711...}, \texttt{+8801711...}, or \texttt{8801711...}).
+    \item The backend detects that Nadia is a registered player on **Portal 15 (bKash/Quizard Core)**.
+    \item Her carrier subscription status across all game categories (Daily, Tournament, BCS Mind Masters, Sports) is evaluated in parallel.
+    \item A cryptographic authentication token is issued, granting her immediate access to her profile, rank velocity, and tournament lobbies.
+    \item When Nadia finishes her tournament rounds and chooses to sign out before handing her phone to her sibling, a single tap triggers a secure token invalidation that guarantees no subsequent unauthorized API requests can be made from cached credentials.
+\end{enumerate}
+\end{tcolorbox}
+
+\section{MSISDN Normalization and Identity Provisioning}
+In Bangladesh, mobile phone numbers (MSISDNs) are entered in various formats across mobile browsers, SMS links, and native webviews:
+\begin{itemize}
+    \item Full International Format: \texttt{+8801711000001}
+    \item Country Code without Prefix: \texttt{8801711000001}
+    \item Standard National Format: \texttt{01711000001}
+    \item Local 10-digit Shorthand: \texttt{1711000001}
+\end{itemize}
+
+To prevent duplicate accounts and ensure deterministic user lookups, the authentication engine executes strict MSISDN sanitization before touching the database:
+
+\begin{lstlisting}[language=python, caption={MSISDN Normalization Logic in Django / .NET 10}]
+def normalize_msisdn(msisdn: str) -> str:
+    # 1. Strip all non-digit characters (spaces, dashes, plus signs)
+    cleaned = re.sub(r"\D", "", msisdn)
+    
+    # 2. Strip leading international country code (880)
+    if cleaned.startswith("880"):
+        cleaned = cleaned[3:]
+        
+    # 3. Strip leading national zero (0)
+    if cleaned.startswith("0"):
+        cleaned = cleaned[1:]
+        
+    return cleaned  # Returns canonical 10-digit string: e.g., '1711000001'
+\end{lstlisting}
+
+\subsection{Just-in-Time (JIT) Tenant Provisioning}
+When a player logs in via \texttt{POST /api/login/}:
+\begin{enumerate}
+    \item \textbf{Global User Check (\texttt{auth\_user}):} The engine checks if the canonical username exists. If not, a new user entity is provisioned automatically with a secure default state.
+    \item \textbf{Tenant Profile Check (\texttt{ParticipantDetail}):} Quizard checks for a tenant profile matching the player's \texttt{user\_id} and the incoming \texttt{portal\_id} (e.g., Portal 15 for bKash Web, Portal 16 for Banglalink, Portal 17 for Grameenphone, Portal 21 for Robi).
+    \item \textbf{Referral \& Promo Attribution:} If a promotional campaign code (\texttt{promo=XYZ}) or referral token is present in the query parameters, it is linked to the participant's record to unlock promotional passes.
+\end{enumerate}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    node distance=2.0cm,
+    box/.style={rectangle, draw=primaryDark, fill=white, rounded corners=2mm, minimum width=2.6cm, minimum height=1.0cm, align=center, line width=1pt},
+    apibox/.style={rectangle, draw=primaryBlue, fill=primaryBlue!10, rounded corners=2mm, minimum width=2.8cm, minimum height=1.0cm, align=center, line width=1.2pt},
+    dbbox/.style={rectangle, draw=accentGreen, fill=accentGreen!10, rounded corners=2mm, minimum width=2.8cm, minimum height=1.0cm, align=center, line width=1.2pt},
+    tokenbox/.style={rectangle, draw=accentAmber, fill=accentAmber!10, rounded corners=2mm, minimum width=2.8cm, minimum height=1.0cm, align=center, line width=1.2pt}
+]
+    \node[box] (client) at (0, 0) {\textbf{Contestant Phone}\\\scriptsize Next.js Client};
+    \node[apibox] (auth) at (5.2, 0) {\textbf{Auth Controller}\\\scriptsize \texttt{POST /api/login}};
+    \node[dbbox] (db) at (10.4, 0) {\textbf{User \& Profiles}\\\scriptsize \texttt{auth\_user} / \texttt{profiles}};
+    \node[tokenbox] (token) at (5.2, -2.2) {\textbf{Token Vault}\\\scriptsize \texttt{authtoken\_token}};
+
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (client) -- node[above, yshift=2pt]{\scriptsize 1. MSISDN + Portal} (auth);
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (auth) -- node[above, yshift=2pt]{\scriptsize 2. Normalize \& Lookup} (db);
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (auth) -- node[right, xshift=2pt]{\scriptsize 3. Generate Token} (token);
+    \draw[-{Latex[length=2.5mm]}, line width=1pt, dashed] (auth) -- node[below, yshift=-2pt]{\scriptsize 4. Token + Sub URLs} (client);
+\end{tikzpicture}
+\caption{End-to-End Authentication and Multi-Tenant Provisioning Workflow}
+\end{figure}
+
+\section{Multi-Tenant Subscription Entitlements and Direct Billing Routing}
+Upon successful identity lookup, the login response dynamically constructs the player's access rights and operator billing redirection paths based on their active carrier tenant:
+
+\begin{table}[htbp]
+\centering
+\scriptsize
+\begin{tabular}{|c|l|p{4.8cm}|p{6.0cm}|}
+\hline
+\rowcolor{primaryBlue!15}
+\textbf{Portal ID} & \textbf{Operator Channel} & \textbf{Billing Gateway URL (\texttt{subURL})} & \textbf{Entitlement Resolution} \\ \hline
+\textbf{15} & bKash / Quizard & \texttt{https://cms.quizard.live/}\newline\texttt{subscription/create/} & Validates daily bKash tokenized MFS subscriptions. \\ \hline
+\textbf{16} & Banglalink (BL) & \texttt{https://cms.quizard.live/}\newline\texttt{bl/user\_subscription} & Checks Banglalink Applink direct carrier billing status. \\ \hline
+\textbf{17} & Grameenphone (GP) & \texttt{https://cms.quizard.live/}\newline\texttt{gp/gp\_user\_subscription/} & Verifies GP Digimart DOB active registration status. \\ \hline
+\textbf{18} & Wordly Standalone & \texttt{https://cms.quizard.live/}\newline\texttt{wordly/subscription/create/} & Checks dedicated Wordly puzzle subscription status. \\ \hline
+\textbf{19} & EngageX Promo & \textit{(Empty - Always Subscribed)} & Automatically grants active access across all categories. \\ \hline
+\textbf{20} & bKash AppInApp & \texttt{https://cms.quizard.live/}\newline\texttt{appinapp/subscription/create/} & Validates embedded webview session in bKash app. \\ \hline
+\textbf{21} & Robi ShadhinMusic & \textit{(Partner Telco API)} & Direct carrier postback validation with Robi engine. \\ \hline
+\end{tabular}
+\caption{Dynamic Carrier Billing and Subscription Resolution Matrix}
+\end{table}
+
+\subsection{Multi-Service Entitlement Flags}
+Rather than a single binary flag, the login response provides fine-grained authorization across Quizard's game portfolio:
+
+\begin{lstlisting}[language=json, caption={Comprehensive Login Response Payload}]
+{
+  "message": "Login successful",
+  "token": "4f8a9b2c1d3e5f7a8b9c0d1e2f3a4b5c6d7e8f9a",
+  "is_verified": true,
+  "subURL": "https://cms.quizard.live/subscription/create/",
+  "isSubscribe": true,
+  "isSubscribeTournament": true,
+  "isSubscribeBcs": false,
+  "isSubscribeSports": true,
+  "isSubscribeWordly": false,
+  "isSubscribeSpellingBee": false,
+  "isSubscribeMemoryMatch": false,
+  "isSubscribeSudokuEasy": false
+}
+\end{lstlisting}
+
+\section{Two-Factor SMS OTP Verification Workflow}
+For high-security portals or new mobile registrations requiring explicit carrier verification, Quizard integrates an automated SMS OTP gateway:
+
+\begin{enumerate}
+    \item \textbf{OTP Dispatch:} A cryptographically secure 6-digit random code is generated, stored in \texttt{ParticipantDetail.otp}, and dispatched via the Telecom SMS Gateway:
+    $$\text{OTP} \in [100000, 999999]$$
+    \item \textbf{Verification Request (\texttt{POST /api/otpverify\_api/}):} The client submits the MSISDN, OTP, and Company ID:
+\begin{lstlisting}[language=json, caption={OTP Verification Request}]
+{
+  "msisdn": "01711000001",
+  "otp": "482910",
+  "company_id": 15
+}
+\end{lstlisting}
+    \item \textbf{Validation and Account Activation:} The server compares the submitted OTP against the database record. Upon a match, \texttt{ParticipantDetail.is\_verified} is set to \texttt{true}, the temporary OTP is purged, and the authenticated session token is released.
+\end{enumerate}
+
+\section{Graceful Logout and Security Token Invalidation}
+In multi-user environments (such as family members sharing a tablet or smartphone), incomplete logouts represent a critical security vulnerability where cached browser tokens could allow unauthorized tournament attempts or prize theft.
+
+Quizard implements **Dual-Boundary Token Invalidation**:
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    node distance=2.0cm,
+    box/.style={rectangle, draw=primaryDark, fill=white, rounded corners=2mm, minimum width=2.8cm, minimum height=1.0cm, align=center, line width=1pt},
+    apibox/.style={rectangle, draw=accentRed, fill=accentRed!10, rounded corners=2mm, minimum width=3.0cm, minimum height=1.0cm, align=center, line width=1.2pt},
+    dbbox/.style={rectangle, draw=primaryDark, fill=gray!10, rounded corners=2mm, minimum width=3.0cm, minimum height=1.0cm, align=center, line width=1.2pt}
+]
+    \node[box] (phone) at (0, 0) {\textbf{Player Phone}\\\scriptsize Next.js Frontend};
+    \node[apibox] (api) at (5.2, 0) {\textbf{Logout Controller}\\\scriptsize \texttt{POST /api/logout}};
+    \node[dbbox] (vault) at (10.4, 0) {\textbf{Token Database}\\\scriptsize \texttt{authtoken\_token}};
+
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (phone) -- node[above, yshift=2pt]{\scriptsize 1. Tap Sign Out} (api);
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (api) -- node[above, yshift=2pt]{\scriptsize 2. \texttt{DELETE FROM authtoken}} (vault);
+    \draw[-{Latex[length=2.5mm]}, line width=1pt, dashed] (api) -- node[below, yshift=-2pt]{\scriptsize 3. HTTP 200 OK} (phone);
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (phone.south) -- ++(0,-1.0) -| node[pos=0.25, below]{\scriptsize 4. Wipe LocalStorage \& Redirect to Splash} (phone.south);
+\end{tikzpicture}
+\caption{Dual-Boundary Logout and Cryptographic Token Destruction}
+\end{figure}
+
+\subsection{1. Server-Side Cryptographic Token Destruction}
+When the player triggers sign-out, the client sends an authenticated request to \texttt{POST /api/logout/} carrying the active header:
+$$\texttt{Authorization: Token 4f8a9b2c1d3e5f7a8b9c0d1e2f3a4b5c6d7e8f9a}$$
+
+The server instantly executes:
+\begin{lstlisting}[language={[Sharp]C}, caption={Server-Side Token Deletion in .NET 10 AuthService}]
+public async Task LogoutAsync(string tokenKey, CancellationToken ct = default)
+{
+    // Instantly remove token from the database
+    await _dbContext.AuthTokens
+        .Where(t => t.Key == tokenKey)
+        .ExecuteDeleteAsync(ct);
+
+    _logger.LogInformation("Security token {TokenPrefix}... successfully invalidated.", 
+        tokenKey[..6]);
+}
+\end{lstlisting}
+
+Any subsequent attempt to reuse the old token immediately fails with an **HTTP 401 Unauthorized** error.
+
+\subsection{2. Client-Side State and Storage Sanitization}
+Upon receiving the HTTP 200 response from the logout endpoint, the Next.js frontend clears all client-side authentication artifacts:
+\begin{itemize}
+    \item Clears \texttt{localStorage.removeItem('token')} and \texttt{localStorage.removeItem('playerData')}.
+    \item Resets the global React authentication state and Zustand stores to default unauthenticated values.
+    \item Redirects the browser to the public splash/landing view, preventing backward navigation via browser cache.
+\end{itemize}
+
+\section{Summary of Authentication Endpoints}
+The table below summarizes the core identity endpoints available in the Quizard API suite:
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\begin{tabular}{|l|l|l|p{5.5cm}|}
+\hline
+\rowcolor{primaryBlue!15}
+\textbf{HTTP Method} & \textbf{Endpoint Route} & \textbf{Auth Level} & \textbf{Functional Purpose} \\ \hline
+\texttt{POST} & \texttt{/api/login/} & Anonymous & MSISDN authentication, JIT provisioning, and entitlement resolution. \\ \hline
+\texttt{POST} & \texttt{/api/login\_platform/} & Anonymous & Platform-specific partner login with tenant-scoped URLs. \\ \hline
+\texttt{POST} & \texttt{/api/otpverify\_api/} & Anonymous & Validates 6-digit SMS OTP code for unverified subscribers. \\ \hline
+\texttt{POST} & \texttt{/api/customlogin/} & Anonymous & Username/password administrative login for CMS analytics dashboard. \\ \hline
+\texttt{POST} & \texttt{/api/logout/} & Authenticated & Destroys active token in database and terminates user session. \\ \hline
+\end{tabular}
+\caption{Comprehensive Identity and Authentication Endpoint Catalog}
+\end{table}
+
+\begin{tcolorbox}[summarybox, title={Chapter Key Takeaways}]
+\begin{itemize}
+    \item \textbf{Deterministic Identity:} MSISDN normalization eliminates duplicate phone representations and guarantees consistent account mapping.
+    \item \textbf{Multi-Tenant Redirection:} Dynamic \texttt{subURL} resolution routes contestants seamlessly to their respective telecom carrier billing gateways.
+    \item \textbf{Dual-Boundary Logout:} Simultaneous server-side token destruction and client-side storage wiping ensure complete protection against unauthorized session hijacking.
+\end{itemize}
+\end{tcolorbox}

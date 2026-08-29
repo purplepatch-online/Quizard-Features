@@ -16,9 +16,10 @@ This repository contains the complete LaTeX source files and the compiled 43-pag
 ```
 Quizard-Features/
 ├── quizard_features_storybook.tex               # Master LaTeX entry point
-├── quizard_features_storybook.pdf               # Compiled 43-page master PDF volume
+├── quizard_features_storybook.pdf               # Compiled 49-page master PDF volume
 ├── .gitignore                                   # Ignore LaTeX build artifacts (*.aux, *.log, etc.)
 ├── README.md                                    # Repository documentation
+├── RATING_SYSTEM_DOTNET_IMPLEMENTATION_GUIDE.md # .NET 10 Clean Architecture Implementation Guide
 └── chapters/
     ├── chapter1_rules_engine_governance.tex     # 1. Rules Engine, 180s Timers & 2-Round Cap
     ├── chapter2_gameplay_question_engine.tex    # 2. Dynamic 60-Question Sampling & Weighting
@@ -30,7 +31,8 @@ Quizard-Features/
     ├── chapter8_reporting_analytics_payouts.tex      # 8. Financial Reporting, bKash B2C & BI
     ├── chapter9_rating_algorithm_score_bands.tex     # 9. 6 Integer Rating Bands (0 to 60 Scale)
     ├── chapter10_xp_ledger_linear_streaks_badges.tex # 10. Linear Streaks (+20 XP*n) & Day 15 Giant Bump
-    └── chapter11_rank_velocity_personalization_adaptive.tex # 11. Rank Velocity (↑/↓), Personalization & 10s Timers
+    ├── chapter11_rank_velocity_personalization_adaptive.tex # 11. Rank Velocity (↑/↓), Personalization & 10s Timers
+    └── chapter12_authentication_identity_lifecycle_logout.tex # 12. Authentication, MSISDN Normalization & Logout
 ```
 
 ---
