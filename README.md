@@ -21,18 +21,18 @@ Quizard-Features/
 ├── README.md                                    # Repository documentation
 ├── RATING_SYSTEM_DOTNET_IMPLEMENTATION_GUIDE.md # .NET 10 Clean Architecture Implementation Guide
 └── chapters/
-    ├── chapter1_rules_engine_governance.tex     # 1. Rules Engine, 180s Timers & 2-Round Cap
-    ├── chapter2_gameplay_question_engine.tex    # 2. Dynamic 60-Question Sampling & Weighting
-    ├── chapter3_security_anticheat_scoring.tex  # 3. AES-256-CBC Security & AntiCheatService
-    ├── chapter4_leaderboards_tournaments_winners.tex # 4. Live Leaderboards, 4:30 AM & 5:30 AM Crons
-    ├── chapter5_api_architecture_dotnet_migration.tex # 5. .NET 10 Clean Architecture & PostgreSQL
-    ├── chapter6_cms_fastapi_telemetry_service.tex    # 6. FastAPI Microservice (cms.quizard.live)
-    ├── chapter7_cms_admin_multigame_ecosystem.tex    # 7. CMS Ops, Question Approval & Telco DOB
-    ├── chapter8_reporting_analytics_payouts.tex      # 8. Financial Reporting, bKash B2C & BI
-    ├── chapter9_rating_algorithm_score_bands.tex     # 9. 6 Integer Rating Bands (0 to 60 Scale)
-    ├── chapter10_xp_ledger_linear_streaks_badges.tex # 10. Daily Streaks (+20 XP/day) & Day 15 Surge (+500 XP)
-    ├── chapter11_rank_velocity_personalization_adaptive.tex # 11. Rank Velocity (↑/↓), Personalization & 10s Timers
-    └── chapter12_authentication_identity_lifecycle_logout.tex # 12. Authentication, MSISDN Normalization & Logout
+    ├── chapter01_authentication_identity_lifecycle_logout.tex # 1. Authentication, MSISDN Normalization & Logout
+    ├── chapter02_rules_engine_governance.tex     # 2. Rules Engine, 180s Timers & 2-Round Cap
+    ├── chapter03_gameplay_question_engine.tex    # 3. Dynamic 60-Question Sampling & Weighting
+    ├── chapter04_security_anticheat_scoring.tex  # 4. AES-256-CBC Security & AntiCheatService
+    ├── chapter05_leaderboards_tournaments_winners.tex # 5. Live Leaderboards, 4:30 AM & 5:30 AM Crons
+    ├── chapter06_rating_algorithm_score_bands.tex     # 6. 6 Integer Rating Bands (0 to 60 Scale)
+    ├── chapter07_xp_ledger_daily_streaks_badges.tex   # 7. Daily Streaks (+20 XP/day) & Day 15 Surge (+500 XP)
+    ├── chapter08_rank_velocity_personalization_adaptive.tex # 8. Rank Velocity (↑/↓), Personalization & 10s Timers
+    ├── chapter09_cms_fastapi_telemetry_service.tex    # 9. FastAPI Microservice (cms.quizard.live)
+    ├── chapter10_cms_admin_multigame_ecosystem.tex    # 10. CMS Ops, Question Approval & Telco DOB
+    ├── chapter11_reporting_analytics_payouts.tex      # 11. Financial Reporting, bKash B2C & BI
+    └── chapter12_api_architecture_dotnet_migration.tex # 12. .NET 10 Clean Architecture & PostgreSQL
 ```
 
 ---

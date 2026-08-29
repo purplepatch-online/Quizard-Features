@@ -148,19 +148,18 @@
     
     \begin{tcolorbox}[colback=white,colframe=cardBorder,width=0.95\linewidth,arc=2mm,title=\textbf{\sffamily Core System Pillars Covered}]
         \begin{itemize}\small
+            \item \textbf{Authentication \& Identity Lifecycle:} MSISDN regex normalization, carrier billing routing, and token invalidation
             \item \textbf{Dynamic Rules Governance:} Server-driven timers (180s), 60-question sets, and 2-attempt daily limits
             \item \textbf{High-Speed Question Engine:} Sub-50ms ID sampling, difficulty weighting, and anti-memorization exclusions
             \item \textbf{Military-Grade Cryptography:} AES-256-CBC payload encryption and anti-cheat answering velocity verification
             \item \textbf{Live Leaderboards \& Tie-Breaking:} Real-time SQL window ranking and strict time-based tie resolution
-            \item \textbf{Automated Tournament Crons:} 04:30 AM daily billing verification and Thursday 05:30 AM weekly championships
-            \item \textbf{Clean Architecture Migration:} Transitioning from Django REST to high-throughput .NET 10 on PostgreSQL
-            \item \textbf{High-Velocity Telemetry Gateway:} Dedicated FastAPI microservice (\texttt{cms.quizard.live}) on MongoDB \& Redis
-            \item \textbf{CMS Operations \& Telco Billing:} Question approval lifecycles, Wordly, Speed Math, DOB, and bKash passes
-            \item \textbf{Financial Reporting \& BI Engine:} Multi-tier winner audits, automated bKash B2C payouts, and revenue analytics
             \item \textbf{Score-Driven Performance Bands:} 6 score-driven tiers (0 to 60) with asymmetric delta adjustments
             \item \textbf{XP Ledger \& Daily Streaks:} Consistent daily streak rewards ($+20\text{ XP/day}$) with giant $+500\text{ XP}$ Day 15 surge
             \item \textbf{Rank Velocity \& Adaptive Challenge:} Live $\uparrow/\downarrow$ glyphs, personalized cards, and 10s fast timers
-            \item \textbf{Authentication \& Logout Lifecycle:} MSISDN regex normalization, carrier billing routing, and token invalidation
+            \item \textbf{High-Velocity Telemetry Gateway:} Dedicated FastAPI microservice (\texttt{cms.quizard.live}) on MongoDB \& Redis
+            \item \textbf{CMS Operations \& Telco Billing:} Question approval lifecycles, Wordly, Speed Math, DOB, and bKash passes
+            \item \textbf{Financial Reporting \& BI Engine:} Multi-tier winner audits, automated bKash B2C payouts, and revenue analytics
+            \item \textbf{Clean Architecture Migration:} Transitioning from Django REST to high-throughput .NET 10 on PostgreSQL
         \end{itemize}
     \end{tcolorbox}
     
@@ -217,41 +216,41 @@ The diagram below illustrates the comprehensive lifecycle of a player's journey 
 
 \newpage
 
-% --- Chapters Inclusion ---
-\input{chapters/chapter1_rules_engine_governance}
+% --- Chapters Inclusion (Chronologically & Architecturally Sorted) ---
+\input{chapters/chapter01_authentication_identity_lifecycle_logout}
 \newpage
 
-\input{chapters/chapter2_gameplay_question_engine}
+\input{chapters/chapter02_rules_engine_governance}
 \newpage
 
-\input{chapters/chapter3_security_anticheat_scoring}
+\input{chapters/chapter03_gameplay_question_engine}
 \newpage
 
-\input{chapters/chapter4_leaderboards_tournaments_winners}
+\input{chapters/chapter04_security_anticheat_scoring}
 \newpage
 
-\input{chapters/chapter5_api_architecture_dotnet_migration}
+\input{chapters/chapter05_leaderboards_tournaments_winners}
 \newpage
 
-\input{chapters/chapter6_cms_fastapi_telemetry_service}
+\input{chapters/chapter06_rating_algorithm_score_bands}
 \newpage
 
-\input{chapters/chapter7_cms_admin_multigame_ecosystem}
+\input{chapters/chapter07_xp_ledger_daily_streaks_badges}
 \newpage
 
-\input{chapters/chapter8_reporting_analytics_payouts}
+\input{chapters/chapter08_rank_velocity_personalization_adaptive}
 \newpage
 
-\input{chapters/chapter9_rating_algorithm_score_bands}
+\input{chapters/chapter09_cms_fastapi_telemetry_service}
 \newpage
 
-\input{chapters/chapter10_xp_ledger_linear_streaks_badges}
+\input{chapters/chapter10_cms_admin_multigame_ecosystem}
 \newpage
 
-\input{chapters/chapter11_rank_velocity_personalization_adaptive}
+\input{chapters/chapter11_reporting_analytics_payouts}
 \newpage
 
-\input{chapters/chapter12_authentication_identity_lifecycle_logout}
+\input{chapters/chapter12_api_architecture_dotnet_migration}
 \newpage
 
 % --- Appendix & Summary ---
