@@ -165,8 +165,8 @@
     
     \vfill
     {\bfseries Author:} Engineering Architecture Team\\
-    {\bfseries Ecosystem:} Next.js 16 Frontend $\longleftrightarrow$ Quizard-API (FastAPI / MongoDB) $\longleftrightarrow$ .NET 10 (PostgreSQL)\\
-    {\bfseries Database Cluster:} PostgreSQL Enterprise Cluster (Host: 103.174.50.155) + MongoDB Telemetry Cluster\\
+    {\bfseries Architecture Evolution:} Quizard-Backend (Django MySQL $\longrightarrow$ .NET 10 PostgreSQL) $\longleftrightarrow$ Next.js 16 Frontend $\longleftrightarrow$ Quizard-API (FastAPI / MongoDB)\\
+    {\bfseries Database Infrastructure:} PostgreSQL Enterprise Cluster + Telemetry MongoDB Cluster (Migrated from MySQL)\\
     {\bfseries Date:} August 2026
 \end{titlepage}
 
@@ -179,7 +179,7 @@
 \addcontentsline{toc}{chapter}{Executive Overview: The Quizard Platform}
 
 \begin{tcolorbox}[storybox, title={Platform Mission}]
-Quizard is Bangladesh's premier real-time interactive quiz and tournament platform, engaging hundreds of thousands of concurrent players across web and telecommunication partner channels (bKash, Banglalink, Robi). 
+Quizard is Bangladesh's premier real-time interactive quiz and tournament platform, engaging hundreds of thousands of concurrent players across web and telecommunication partner channels (bKash, Banglalink, Grameenphone, Robi). 
 
 To ensure absolute competitive integrity, fair prize distribution, and instantaneous responsiveness, Quizard combines server-authoritative game governance, sub-50ms dynamic question generation, end-to-end payload cryptography, and automated tournament consolidation.
 \end{tcolorbox}
@@ -251,20 +251,64 @@ The diagram below illustrates the comprehensive lifecycle of a player's journey 
 \newpage
 
 % --- Appendix & Summary ---
-\chapter{Technical Glossary and Reference Guide}
+\chapter{Technical Glossary and Authoritative Reference Directories}
+
+\section{Authoritative Event and Service ID Directory}
+The table below documents the production Event ID configuration shared across the Next.js frontend, Django backend, and .NET 10 question engine:
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\begin{tabular}{|c|l|l|p{6.4cm}|}
+\hline
+\rowcolor{primaryBlue!15}
+\textbf{Event ID} & \textbf{Service Type} & \textbf{Frontend Display Title} & \textbf{Game Rules \& Configuration} \\ \hline
+\textbf{34} & \texttt{Daily} & Islamic Daily Quiz Challenge & 60 questions, 180s timer, 2 attempts per day. \\ \hline
+\textbf{150} & \texttt{Tournament} & Quiz Tournament Arena & Weekly championship tournament rules with cash prizes. \\ \hline
+\textbf{149} & \texttt{BCS} & Mind Masters Quiz (BCS Prep) & Subtopics: \texttt{bcs\_prep}, \texttt{bcs\_job}, \texttt{bcs\_class8}. \\ \hline
+\textbf{75} & \texttt{Sports} & Sports Quiz Arena & Football, Cricket, and Sports trivia categories. \\ \hline
+\textbf{134} & \texttt{SpellingBee} & Spelling Bee Challenge & English \& Bengali vocabulary spell-check puzzles. \\ \hline
+\textbf{67} & \texttt{Wordly} & Wordly Bangla & 5-letter daily Bengali hidden word puzzle. \\ \hline
+\textbf{79} & \texttt{Wordly} & Wordly English & 5-letter daily English hidden word puzzle. \\ \hline
+\textbf{151} & \texttt{MemoryMatch} & Memory Match Arcade & Visual card-matching reflex game (Easy, Medium, Hard). \\ \hline
+\textbf{152--155} & \texttt{Sudoku} & Sudoku Master Series & Sudoku levels: Easy (152), Medium (153), Hard (154), Expert (155). \\ \hline
+\end{tabular}
+\caption{Quizard Authoritative Event and Service ID Directory}
+\end{table}
+
+\section{Authoritative Multi-Tenant Portal Directory (\texttt{PortalType})}
+Quizard provides strict multi-tenant isolation across telecom carriers and digital wallet partners:
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\begin{tabular}{|c|l|l|p{6.2cm}|}
+\hline
+\rowcolor{primaryBlue!15}
+\textbf{Portal ID} & \textbf{Enum Key} & \textbf{Operator / Channel} & \textbf{Tenant Architecture \& Billing Integration} \\ \hline
+\textbf{15} & \texttt{Quizard} & bKash / Quizard Web Core & Primary parent company; bKash tokenized MFS charging. \\ \hline
+\textbf{16} & \texttt{ApplinkBL} & Banglalink (BL) & Direct Operator Billing via Banglalink Applink gateway. \\ \hline
+\textbf{17} & \texttt{DigimartGP} & Grameenphone (GP) & Direct Operator Billing via GP Digimart subscription SDK. \\ \hline
+\textbf{18} & \texttt{Wordly} & bKash Wordly & Standalone Wordly puzzle tenant; dedicated subscription pass. \\ \hline
+\textbf{19} & \texttt{EngageX} & EngageX Promotional & Always-subscribed promotional and partner testing tenant. \\ \hline
+\textbf{20} & \texttt{AppInApp} & bKash AppInApp & Micro-frontend embedded inside official bKash mobile app. \\ \hline
+\textbf{21} & \texttt{ShadhinMusic} & Robi / Shadhin Music & Co-branded portal mapped to Robi telco billing backend. \\ \hline
+\textbf{22} & \texttt{Arcade} & Robi Wordly / Arcade & Robi arcade gaming portal mapped to Wordly company rules. \\ \hline
+\textbf{25} & \texttt{GPArcade} & Grameenphone Arcade & GP arcade subscription portal for casual puzzle series. \\ \hline
+\end{tabular}
+\caption{Quizard Authoritative Portal ID and Carrier Gateway Matrix}
+\end{table}
 
 \section{Glossary of Core Domain Entities}
 \begin{description}
     \item[\textbf{MSISDN:}] Mobile Station International Subscriber Directory Number (the player's unique mobile phone number in Bangladesh, e.g., \texttt{01711000001}).
-    \item[\textbf{Event / Rule ID:}] Unique numeric identifier for a tournament competition rule set (e.g., \texttt{Event 34 = Daily Rapid Tournament}, \texttt{Event 75 = Mega Weekly Championship}).
-    \item[\textbf{Portal ID:}] Tenant identifier providing multi-tenant isolation (e.g., \texttt{15 = Quizard Web / bKash}, \texttt{20 = Banglalink}, \texttt{21 = Robi}).
     \item[\textbf{AES-256-CBC:}] Advanced Encryption Standard with 256-bit key length operating in Cipher Block Chaining mode, securing all client score transmissions.
     \item[\textbf{Dense Rank:}] A database ranking function where identical scores receive identical rank numbers without creating gaps in consecutive rank assignments.
     \item[\textbf{Velocity Check:}] Anti-cheat validation ensuring the rate of answered questions does not exceed human biological reaction thresholds ($\le 1.5\text{ answers/sec}$).
 \end{description}
 
 \begin{tcolorbox}[summarybox, title={Final Architecture Conclusion}]
-Quizard's architecture represents a gold standard for high-performance, real-time gaming in emerging markets. By coupling dynamic rules governance, sub-50ms question sampling, end-to-end cryptographic integrity, and automated financial verification, the platform delivers an engaging and trustworthy experience to millions of contestants.
+Quizard's architecture represents a gold standard for high-performance, real-time gaming in emerging markets. By migrating from Django/MySQL to high-throughput .NET 10/PostgreSQL, coupling dynamic rules governance, sub-50ms question sampling, end-to-end cryptographic integrity, and automated financial verification, the platform delivers an engaging and trustworthy experience to millions of contestants.
 \end{tcolorbox}
 
 \end{document}
