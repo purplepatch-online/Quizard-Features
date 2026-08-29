@@ -1,0 +1,110 @@
+% ============================================================================
+% CHAPTER 11: REAL-TIME WEBSOCKETS ARCHITECTURE AND LIVE DUELS
+% ============================================================================
+\chapter{Real-Time WebSockets Architecture and Live Head-to-Head Duels}
+
+\begin{tcolorbox}[storybox, title={The Story of the Live Friday Night Showdown}]
+It is 09:00 PM on Friday. Two top contestants—Adnan in Dhaka and Farhan in Bogra—enter Quizard's new **1v1 Live Arena**.
+
+Instead of waiting for an asynchronous cron job to calculate leaderboard results, both contestants connect to a high-speed **SignalR WebSocket hub**:
+\begin{enumerate}
+    \item \textbf{Instant Matchmaking ($< 1.2\text{s}$):} The Redis matchmaking queue pairs both players based on their identical Skill Rating (48 Specialist).
+    \item \textbf{Synchronized Countdown:} Both phone screens flash 3... 2... 1... and the first question appears simultaneously on both devices.
+    \item \textbf{Live Telemetry Ghost Bar:} As Adnan answers Question 1 in 1.4 seconds, Farhan's screen shows Adnan's avatar leaping forward with an instant sound effect.
+    \item \textbf{Real-Time Tie-Breaker:} Over 10 rapid questions, Adnan scores 9 in 21 seconds, while Farhan scores 9 in 23 seconds. Adnan is crowned champion instantly on screen ($< 15\text{ms}$ socket broadcast).
+\end{enumerate}
+The adrenaline of seeing an opponent's real-time progress elevates Quizard from a solo quiz into a competitive live e-sport.
+\end{tcolorbox}
+
+\section{HTTP Polling vs WebSockets Architectural Evaluation}
+In high-concurrency tournament environments, traditional HTTP polling introduces substantial overhead:
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\begin{tabular}{|l|p{5.5cm}|p{5.8cm}|}
+\hline
+\rowcolor{primaryBlue!15}
+\textbf{Architectural Metric} & \textbf{HTTP Long-Polling} & \textbf{SignalR / WebSockets} \\ \hline
+\textbf{Connection Lifecycle} & New TCP/TLS handshake on every poll ($200-400\text{ms}$). & Single persistent full-duplex TCP socket. \\ \hline
+\textbf{Server Network Load} & 100,000 requests/sec with heavy HTTP headers. & Minimal heartbeat frames ($< 32\text{ bytes}$ per frame). \\ \hline
+\textbf{End-to-End Latency} & $500\text{ms} - 2000\text{ms}$ polling interval lag. & $\mathbf{< 15\text{ms}}$ instantaneous push delivery. \\ \hline
+\textbf{Live Head-to-Head} & Imposible to synchronize microsecond tie-breaks. & Perfectly synchronized server-authoritative timer. \\ \hline
+\end{tabular}
+\caption{Architectural Comparison: HTTP Polling vs Full-Duplex WebSockets}
+\end{table}
+
+\section{Distributed WebSocket Hub with Redis Pub/Sub Backplane}
+To support over 100,000 concurrent contestants across multiple horizontally scaled .NET 10 API instances, Quizard utilizes a **Redis Pub/Sub Socket Backplane**:
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    node distance=1.8cm,
+    client/.style={rectangle, draw=primaryDark, fill=white, rounded corners=2mm, minimum width=2.4cm, minimum height=0.9cm, align=center, line width=1pt},
+    server/.style={rectangle, draw=primaryBlue, fill=primaryBlue!10, rounded corners=2mm, minimum width=3.2cm, minimum height=1.0cm, align=center, line width=1.2pt},
+    redis/.style={rectangle, draw=accentRed, fill=accentRed!10, rounded corners=2mm, minimum width=4.0cm, minimum height=1.1cm, align=center, line width=1.2pt}
+]
+    \node[client] (c1) at (-4, 2) {\textbf{Player A}\\\scriptsize Next.js App};
+    \node[client] (c2) at (4, 2) {\textbf{Player B}\\\scriptsize Next.js App};
+
+    \node[server] (s1) at (-2.5, 0) {\textbf{.NET 10 Hub Node 1}\\\scriptsize SignalR Gateway};
+    \node[server] (s2) at (2.5, 0) {\textbf{.NET 10 Hub Node 2}\\\scriptsize SignalR Gateway};
+
+    \node[redis] (redis) at (0, -2) {\textbf{Redis Pub/Sub Backplane}\\\scriptsize Channel: \texttt{match:duel:8942}};
+
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (c1) -- node[left]{\scriptsize Socket A} (s1);
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (c2) -- node[right]{\scriptsize Socket B} (s2);
+
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (s1) -- node[left]{\scriptsize Publish Answer} (redis);
+    \draw[-{Latex[length=2.5mm]}, line width=1pt, dashed] (redis) -- node[right]{\scriptsize Broadcast Delta ($< 10\text{ms}$)} (s2);
+    \draw[-{Latex[length=2.5mm]}, line width=1pt, dashed] (s2) -- (c2);
+\end{tikzpicture}
+\caption{Distributed Multi-Node WebSocket Architecture with Redis Backplane}
+\end{figure}
+
+\section{.NET 10 SignalR Hub Implementation}
+
+\begin{lstlisting}[language={[Sharp]C}, caption={Live Tournament Duel SignalR Hub in .NET 10}]
+[Authorize]
+public class LiveDuelHub : Hub
+{
+    private readonly IDuelMatchmaker _matchmaker;
+    private readonly ILogger<LiveDuelHub> _logger;
+
+    public LiveDuelHub(IDuelMatchmaker matchmaker, ILogger<LiveDuelHub> logger)
+    {
+        _matchmaker = matchmaker;
+        _logger = logger;
+    }
+
+    public async Task JoinQueue(int eventId)
+    {
+        var msisdn = Context.UserIdentifier!;
+        var match = await _matchmaker.EnqueuePlayerAsync(msisdn, eventId, Context.ConnectionId);
+
+        if (match != null)
+        {
+            // Both players matched: notify room instantly
+            await Clients.Clients(match.PlayerAConnection, match.PlayerBConnection)
+                .SendAsync("MatchFound", match);
+        }
+    }
+
+    public async Task SubmitLiveAnswer(string matchId, int questionId, string selectedOption)
+    {
+        var result = await _matchmaker.RecordLiveAnswerAsync(matchId, Context.UserIdentifier!, questionId, selectedOption);
+        
+        // Broadcast opponent progress bar update (< 15ms latency)
+        await Clients.Group(matchId).SendAsync("OpponentProgressUpdated", result);
+    }
+}
+\end{lstlisting}
+
+\begin{tcolorbox}[summarybox, title={Chapter Key Takeaways}]
+\begin{itemize}
+    \item **Sub-15ms Latency:** WebSockets eliminate HTTP roundtrip latency, delivering synchronous real-time gameplay.
+    \item **Massive Scale-Out:** Redis Pub/Sub allows hundreds of thousands of concurrent connections to broadcast across load-balanced server clusters.
+    \item **Competitive Live Duels:** 1v1 live duels provide high-retention head-to-head e-sports experiences.
+\end{itemize}
+\end{tcolorbox}

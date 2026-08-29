@@ -1,0 +1,136 @@
+% ============================================================================
+% CHAPTER 08: USER PERSONALIZATION, RANK VELOCITY, AND RETENTION NUDGES
+% ============================================================================
+\chapter{User Personalization Engine, Rank Velocity, and Retention Nudges}
+
+\begin{tcolorbox}[storybox, title={The Story of Tanvir's Personalized Comeback}]
+Tanvir, a university student in Sylhet, opened Quizard, played 4 questions in the tournament, got stuck at the free-trial boundary, and stopped. Like hundreds of players in the 15-day dataset (where only 18 players returned for 8+ days), Tanvir was about to become another 1-day churn statistic.
+
+The next day, Tanvir receives a targeted in-app personalization card:
+\begin{center}
+\textit{``Tanvir, you answered 100\% of your attempted questions yesterday! Unsubscribed players miss out on the 25,000 BDT Weekly Cash Pool. Activate bKash 2 BDT pass to unlock unlimited tournament plays.''}
+\end{center}
+
+Intrigued, Tanvir subscribes. His accuracy jumps, and as he climbs the tournament ladder, a glowing $\boldsymbol{\uparrow 8}$ rank-velocity indicator appears on his leaderboard card with the banner: \textit{``You are only 3 points away from the Top 10 prize zone!''} 
+
+By pairing data-backed personalization nudges with visceral rank velocity feedback, Quizard converts a churn-risk user into a daily active contender.
+\end{tcolorbox}
+
+\section{The Retention Crisis and Empirical Evidence}
+A deep analysis of 15 days of production gameplay telemetry revealed two critical behavioral truths:
+
+\begin{enumerate}
+    \item \textbf{The 1-Day Churn Cliff (Query F):} The vast majority of participants play on exactly \textbf{1 day} and never return. Only 18 players maintained an 8-day active streak.
+    \item \textbf{The Subscription Engagement Multiplier (Query A):} Subscribed players answer **3x more questions correctly** ($11.42$ vs $1.54$) and attempt **5.6x more questions per session** ($22.81$ vs $4.06$) compared to non-subscribed players. Non-subscribed users hit the 4-question trial wall and abandon the session.
+    \item \textbf{The Single-Game Silo (Query C):} Only **3.4\%** of active contestants have played all 4 platform genres. Over 96\% only ever touch a single game (primarily Tournament Event 150).
+\end{enumerate}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.9]
+    \begin{axis}[
+        ybar,
+        bar width=0.65cm,
+        width=12cm, height=5.8cm,
+        ylabel={Questions per Session},
+        symbolic x coords={Correct Answers, Questions Attempted},
+        xtick=data,
+        nodes near coords,
+        nodes near coords align={vertical},
+        ymin=0, ymax=28,
+        legend style={at={(0.5,-0.2)}, anchor=north, legend columns=-1},
+        title={\textbf{Telemetry Evidence: Subscribed vs Non-Subscribed Engagement}}
+    ]
+        \addplot[fill=primaryBlue!70] coordinates {(Correct Answers, 1.54) (Questions Attempted, 4.06)};
+        \addplot[fill=accentGreen!70] coordinates {(Correct Answers, 11.42) (Questions Attempted, 22.81)};
+        \legend{Non-Subscribed, Subscribed (bKash/Telco)}
+    \end{axis}
+\end{tikzpicture}
+\caption{Production Gameplay Gap Between Subscribed and Non-Subscribed Players}
+\end{figure}
+
+\section{The Multi-Tier Profile Personalization Engine}
+To eliminate the 1-day churn cliff, the backend personalizes the player's home feed and profile cards based on their behavioral cluster:
+
+\subsection{1. Missing Rewards Nudge (Unsubscribed Players)}
+For players who achieve $\ge 50\%$ accuracy during free-tier rounds but have not subscribed:
+\begin{itemize}
+    \item \textbf{Trigger Condition:} \texttt{is\_subscribed == False} AND \texttt{attempt\_count >= 1} AND \texttt{right\_ratio >= 0.50}.
+    \item \textbf{Message Copy:} \textit{``You scored [X]/[Y]! Subscribed players earn real bKash payouts for qualifying scores. Subscribe now for 2 BDT/day to enter the official prize draw.''}
+\end{itemize}
+
+\subsection{2. Cross-Game Ecosystem Discovery Nudge (Single-Game Players)}
+For contestants who have only ever played one game (e.g., Tournament 150):
+\begin{itemize}
+    \item \textbf{Trigger Condition:} \texttt{distinct\_games\_played == 1}.
+    \item \textbf{Message Copy:} \textit{``You are a Tournament specialist! Did you know? Players who also compete in BCS Mind Masters and Wordly earn 2x bonus XP today.''}
+\end{itemize}
+
+\subsection{3. Inactivity Win-Back Nudge (Lapsed 24h+ Players)}
+\begin{itemize}
+    \item \textbf{Trigger Condition:} \texttt{days\_inactive >= 1} AND \texttt{streak\_count >= 3}.
+    \item \textbf{Message Copy:} \textit{``Your [N]-day streak is at risk! Complete 1 round before 11:59 PM to protect your progress towards the Day 15 (+500 XP) surge.''}
+\end{itemize}
+
+\section{Real-Time Leaderboard Rank Velocity Indicators}
+Daily leaderboard data demonstrates that scores swing substantially between attempts (players fluctuating between 0 and 40+ points). Static leaderboards fail to communicate this dynamic progress.
+
+Quizard introduces real-time **Rank Velocity Vectors**:
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    card/.style={rectangle, draw=cardBorder, fill=white, rounded corners=2.5mm, minimum width=11.5cm, minimum height=1.2cm, align=left, line width=1.1pt}
+]
+    \node[card] (c1) at (0, 0) {
+        \textbf{\large 8. Tanvir Rahman} \hfill \textbf{\large 54/60} \quad \textcolor{accentGreen!80!black}{\textbf{\large $\boldsymbol{\uparrow 5}$ Positions}}\\
+        \footnotesize \textcolor{gray}{Sylhet Division $\bullet$ Time: 112s} \hfill \textcolor{primaryBlue}{\textbf{Points to Top 5: 2 pts}}
+    };
+    \node[card] (c2) at (0, -1.6) {
+        \textbf{\large 14. Shakib Al Hasan} \hfill \textbf{\large 48/60} \quad \textcolor{accentRed}{\textbf{\large $\boldsymbol{\downarrow 3}$ Positions}}\\
+        \footnotesize \textcolor{gray}{Dhaka $\bullet$ Time: 135s} \hfill \textcolor{accentAmber!90!black}{\textbf{Points to Top 10: 4 pts}}
+    };
+\end{tikzpicture}
+\caption{Leaderboard Cards with Rank Movement Glyphs and Distance-to-Prize Gaps}
+\end{figure}
+
+\subsection{Velocity and Points-to-Top-10 Mathematics}
+The backend computes rank delta by comparing the player's current dense rank against their rank snapshot recorded at 12:00 AM:
+\begin{equation}
+\Delta \text{Rank} = \text{Rank}_{\text{yesterday}} - \text{Rank}_{\text{current}}
+\end{equation}
+\begin{itemize}
+    \item If $\Delta \text{Rank} > 0$: Display green $\boldsymbol{\uparrow \Delta\text{Rank}}$ (Surging upward).
+    \item If $\Delta \text{Rank} < 0$: Display red $\boldsymbol{\downarrow |\Delta\text{Rank}|}$ (Slipping downward).
+    \item If $\Delta \text{Rank} = 0$: Display gray $=$ (Holding position).
+\end{itemize}
+
+The **Points to Top 10 Gap** ($S_{\text{gap}}$) calculates the minimum incremental score needed to enter the prize-eligible Top 10 cutoff:
+\begin{equation}
+S_{\text{gap}} = \max\left(1, \, S_{\text{rank 10}} - S_{\text{player}} + 1\right)
+\end{equation}
+
+\section{PostgreSQL Schema & API Implementation}
+
+\begin{lstlisting}[language=SQL, caption={PostgreSQL Schema for Personalization and Rank Snapshots}]
+-- Daily Rank Snapshots Table for Fast Velocity Lookups
+CREATE TABLE leaderboard_daily_snapshots (
+    id BIGSERIAL PRIMARY KEY,
+    msisdn VARCHAR(15) NOT NULL,
+    portal_id INT NOT NULL DEFAULT 15,
+    event_id INT NOT NULL,
+    snapshot_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    snapshot_rank INT NOT NULL,
+    best_score INT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX idx_rank_snapshot ON leaderboard_daily_snapshots (msisdn, portal_id, event_id, snapshot_date);
+\end{lstlisting}
+
+\begin{tcolorbox}[summarybox, title={Chapter Key Takeaways}]
+\begin{itemize}
+    \item **Directly Solves the 1-Day Churn Problem:** Targeted nudges convert casual 4-question trial dropouts into active subscribers (who play 5.6x more).
+    \item **Cross-Genre Discovery:** Activates the 96.6\% single-game user base across BCS, Wordly, and Sports.
+    \item **Visceral Motivation:** Rank arrows ($\uparrow/\downarrow$) and ``Points to Top 10'' create urgent reasons to play the 2nd daily attempt.
+\end{itemize}
+\end{tcolorbox}

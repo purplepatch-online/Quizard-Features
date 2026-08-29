@@ -28,11 +28,15 @@ Quizard-Features/
     ├── chapter05_leaderboards_tournaments_winners.tex # 5. Live Leaderboards, 4:30 AM & 5:30 AM Crons
     ├── chapter06_rating_algorithm_score_bands.tex     # 6. 6 Integer Rating Bands (0 to 60 Scale)
     ├── chapter07_xp_ledger_daily_streaks_badges.tex   # 7. Daily Streaks (+20 XP/day) & Day 15 Surge (+500 XP)
-    ├── chapter08_rank_velocity_personalization_adaptive.tex # 8. Rank Velocity (↑/↓), Personalization & 10s Timers
-    ├── chapter09_cms_fastapi_telemetry_service.tex    # 9. FastAPI Microservice (cms.quizard.live)
-    ├── chapter10_cms_admin_multigame_ecosystem.tex    # 10. CMS Ops, Question Approval & Telco DOB
-    ├── chapter11_reporting_analytics_payouts.tex      # 11. Financial Reporting, bKash B2C & BI
-    └── chapter12_api_architecture_dotnet_migration.tex # 12. .NET 10 Clean Architecture & PostgreSQL
+    ├── chapter08_user_personalization_rank_velocity.tex # 8. Personalization Nudges & Rank Velocity Arrows
+    ├── chapter09_multimodal_quiz_formats.tex     # 9. Multi-Modal Formats (Image, Audio, Video, Tile)
+    ├── chapter10_adaptive_difficulty_retention.tex # 10. Adaptive Match Governance & Grandmaster Blitz
+    ├── chapter11_websockets_realtime_architecture.tex # 11. Real-Time WebSockets & Live 1v1 Duels
+    ├── chapter12_ai_voice_qa_rag_architecture.tex # 12. AI Voice Q&A, RAG & Small vs Large LLMs
+    ├── chapter13_cms_fastapi_telemetry_service.tex # 13. FastAPI Telemetry Service (cms.quizard.live)
+    ├── chapter14_cms_admin_multigame_ecosystem.tex # 14. CMS Ops, Multi-Game Engines & Telco DOB
+    ├── chapter15_reporting_analytics_payouts.tex # 15. Financial Reporting, bKash B2C & BI
+    └── chapter16_api_architecture_dotnet_migration.tex # 16. .NET 10 Clean Architecture & PostgreSQL
 ```
 
 ---

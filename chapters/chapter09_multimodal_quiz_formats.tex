@@ -1,0 +1,110 @@
+% ============================================================================
+% CHAPTER 09: MULTI-MODAL QUIZ FORMATS: IMAGE, AUDIO, VIDEO, AND FILL-IN-THE-BLANK
+% ============================================================================
+\chapter{Multi-Modal Quiz Formats: Visual, Audio, Video, and Fill-in-the-Blank}
+
+\begin{tcolorbox}[storybox, title={The Story of Nila's Engaging Multimedia Round}]
+Nila, a 9th-grade student in Rajshahi, previously found standard 60-question text quizzes monotonous. In previous rounds, telemetry showed her quitting around question 22 after 58 seconds—suffering from standard Multiple-Choice Question (MCQ) fatigue.
+
+Today, Nila launches a tournament round powered by Quizard's **Multi-Modal Engine**:
+\begin{enumerate}
+    \item \textbf{Question 1 (Image Identification):} A high-resolution picture of the *Somapura Mahavihara* ancient Buddhist monastery appears instantly with 4 historical era options.
+    \item \textbf{Question 15 (Audio Snippet):} A 3-second audio snippet plays the signature call of the *Doel (Oriental Magpie-Robin)*—Bangladesh's national bird.
+    \item \textbf{Question 30 (Video Clip):} A 4-second video clip shows the winning goal of the 2022 SAFF Women's Championship, asking for the goal scorer.
+    \item \textbf{Question 45 (Fill-in-the-Blank):} An interactive Bengali letter-tile keyboard prompts her to complete the missing letters of an ancient rivers name.
+\end{enumerate}
+Engaged by the rich sensory variety, Nila completes all 60 questions, scoring 52 correct in 140 seconds without experiencing mid-round abandonment.
+\end{tcolorbox}
+
+\section{The Format Fatigue Diagnosis (Query H)}
+Production telemetry (Query H) revealed an unexpected pattern: contestants answered an average of only **19 to 26 questions** per session, with average playtime lasting **55 to 62 seconds**—far below the allocated 180-second countdown.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.9]
+    \begin{axis}[
+        title={\textbf{Session Abandonment vs Format Variety}},
+        xlabel={Time Elapsed in Round (Seconds)},
+        ylabel={Contestants Remaining Active (\%)},
+        xmin=0, xmax=180,
+        ymin=0, ymax=100,
+        grid=major,
+        width=12cm, height=5.5cm,
+        legend pos=north east
+    ]
+    \addplot[color=accentRed, dashed, line width=1.5pt] coordinates {
+        (0, 100) (30, 92) (60, 48) (90, 24) (120, 15) (150, 10) (180, 8)
+    };
+    \addplot[color=accentGreen!80!black, line width=1.5pt] coordinates {
+        (0, 100) (30, 96) (60, 88) (90, 82) (120, 76) (150, 71) (180, 68)
+    };
+    \legend{Monolithic Text MCQ, Multi-Modal Variety Format}
+    \end{axis}
+\end{tikzpicture}
+\caption{Contestant Retention Across the 180-Second Round Duration}
+\end{figure}
+
+Monolithic text-only MCQs cause cognitive monotony. Introducing diverse sensory formats transforms the tournament into an immersive, TV-show-style game show experience.
+
+\section{The 4 Core Multi-Modal Question Archetypes}
+
+\subsection{1. Image-Based Identification (\texttt{image\_mcq})}
+Presents compressed WebP imagery optimized for mobile networks ($< 45\text{ KB}$ per image). Used for geography, anatomy, science diagrams, and historical landmarks.
+
+\subsection{2. Audio Snippet Challenges (\texttt{audio\_clip})}
+Streams lightweight AAC audio files ($< 25\text{ KB}$, $3-5\text{ seconds}$). Used for language pronunciation, musical instruments, historic radio broadcasts, and wildlife identification.
+
+\subsection{3. Short Video Moments (\texttt{video\_clip})}
+Delivers ultra-short MP4/AV1 looping clips ($< 250\text{ KB}$, $3-4\text{ seconds}$). Used for sports highlights, physics simulations, and chemistry reactions.
+
+\subsection{4. Fill-in-the-Blank with Virtual Tile Keyboard (\texttt{fill\_blank})}
+Contestants type or select jumbled Bengali/English alphabet tiles to spell the correct answer. This eliminates simple guessing and rewards genuine knowledge mastery.
+
+\section{Sub-50ms Mobile Asset Preloading Architecture}
+To prevent network buffering or delays on 3G and 4G mobile connections across Bangladesh, Quizard implements an **Ahead-of-Time (AOT) Media Pre-Caching Pipeline**:
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    node distance=2.2cm,
+    box/.style={rectangle, draw=primaryDark, fill=white, rounded corners=2mm, minimum width=2.8cm, minimum height=1.0cm, align=center, line width=1pt},
+    cdnbox/.style={rectangle, draw=primaryBlue, fill=primaryBlue!10, rounded corners=2mm, minimum width=3.0cm, minimum height=1.0cm, align=center, line width=1.2pt},
+    cachebox/.style={rectangle, draw=accentGreen, fill=accentGreen!10, rounded corners=2mm, minimum width=3.0cm, minimum height=1.0cm, align=center, line width=1.2pt}
+]
+    \node[box] (app) at (0, 0) {\textbf{Contestant App}\\\scriptsize Next.js Client};
+    \node[cdnbox] (cdn) at (5.2, 0) {\textbf{Edge Media CDN}\\\scriptsize Cloudflare / MinIO S3};
+    \node[cachebox] (cache) at (10.4, 0) {\textbf{Browser Blob Cache}\\\scriptsize ServiceWorker / IndexedDB};
+
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (app) -- node[above, yshift=2pt]{\scriptsize 1. Fetch 60 Qs Manifest} (cdn);
+    \draw[-{Latex[length=2.5mm]}, line width=1pt] (cdn) -- node[above, yshift=2pt]{\scriptsize 2. Stream Compressed Assets} (cache);
+    \draw[-{Latex[length=2.5mm]}, line width=1pt, dashed] (cache) -- node[below, yshift=-2pt]{\scriptsize 3. Instant $< 5\text{ms}$ Blob Render} (app);
+\end{tikzpicture}
+\caption{Zero-Lag Media Asset Delivery Architecture for Multi-Modal Gameplay}
+\end{figure}
+
+\section{Database Schema and JSON Question Payloads}
+
+\begin{lstlisting}[language=json, caption={Multi-Modal Question Payload}]
+{
+  "id": 8421,
+  "format_type": "image_mcq",
+  "question": "Which historic archaeological site in Bangladesh is shown below?",
+  "media_url": "https://cdn.quizard.live/media/images/somapura_8421.webp",
+  "media_type": "image/webp",
+  "options": [
+    {"id": "A", "text": "Paharpur Somapura Mahavihara"},
+    {"id": "B", "text": "Mahasthangarh Citadel"},
+    {"id": "C", "text": "Mainamati Shalban Vihara"},
+    {"id": "D", "text": "Kantajew Temple"}
+  ],
+  "allocated_seconds": 15
+}
+\end{lstlisting}
+
+\begin{tcolorbox}[summarybox, title={Chapter Key Takeaways}]
+\begin{itemize}
+    \item **Direct Solution to Mid-Round Dropouts:** Visual, audio, and tile-puzzle variety prevents the severe drop-off observed at question 20 in text-only rounds.
+    \item **Mobile-Optimized Assets:** WebP and AAC compression ($< 50\text{ KB}$) ensures flawless playability across 3G/4G telco networks.
+    \item **Client-Side Blob Preloading:** Zero buffering ensures questions render within 5 milliseconds of transition.
+\end{itemize}
+\end{tcolorbox}
