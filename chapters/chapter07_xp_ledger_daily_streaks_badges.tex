@@ -120,6 +120,100 @@ Contestants unlock permanent collectible badges displayed on their public profil
 \caption{Quizard Milestone Achievement Badges Matrix}
 \end{table}
 
+
+\section{The XP Utility Ecosystem: Redeeming Points and Multi-Feature Economy}
+While XP was originally conceived as a measurement of loyalty and daily streaks, modern competitive retention requires an active \textbf{Sink Economy} where accumulated XP can be spent. Contestants can redeem their earned XP across six distinct functional sections of the Quizard platform:
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    box/.style={rectangle, draw=cardBorder, fill=white, rounded corners=2mm, minimum width=3.4cm, minimum height=1.1cm, align=center, line width=1.1pt},
+    xpcenter/.style={circle, draw=accentAmber, fill=accentAmber!15, minimum size=2.2cm, align=center, line width=1.5pt}
+]
+    \node[xpcenter] (xp) at (0, 0) {\textbf{\large Player XP}\\\footnotesize Central Wallet};
+
+    \node[box] (rounds) at (-5.0, 2.0) {\textbf{1. Extra Rounds}\\\scriptsize Daily Cap Bypass (150 XP)};
+    \node[box] (lifelines) at (0, 2.6) {\textbf{2. In-Game Lifelines}\\\scriptsize 50-50 / Time Freeze};
+    \node[box] (streak) at (5.0, 2.0) {\textbf{3. Streak Freeze}\\\scriptsize Shield Lost Day (300 XP)};
+
+    \node[box] (vip) at (-5.0, -2.0) {\textbf{4. VIP Tournaments}\\\scriptsize 50k BDT Pot (500 XP)};
+    \node[box] (cosmetic) at (0, -2.6) {\textbf{5. Profile Customization}\\\scriptsize Avatar Frames / Themes};
+    \node[box] (telco) at (5.0, -2.0) {\textbf{6. Telco Data Packs}\\\scriptsize 500MB Data / bKash Coupons};
+
+    \draw[-{Latex[length=2.5mm]}, line width=1.1pt, color=primaryBlue] (xp) -- (rounds);
+    \draw[-{Latex[length=2.5mm]}, line width=1.1pt, color=primaryBlue] (xp) -- (lifelines);
+    \draw[-{Latex[length=2.5mm]}, line width=1.1pt, color=primaryBlue] (xp) -- (streak);
+    \draw[-{Latex[length=2.5mm]}, line width=1.1pt, color=primaryBlue] (xp) -- (vip);
+    \draw[-{Latex[length=2.5mm]}, line width=1.1pt, color=primaryBlue] (xp) -- (cosmetic);
+    \draw[-{Latex[length=2.5mm]}, line width=1.1pt, color=primaryBlue] (xp) -- (telco);
+\end{tikzpicture}
+\caption{Quizard Multi-Tier XP Utility and Redemption Ecosystem}
+\end{figure}
+
+\subsection{1. Buying Extra Tournament and Game Rounds (Daily Cap Bypass)}
+Under standard rules, contestants are restricted to 2 tournament attempts per day. Once daily rounds are exhausted, players can spend XP to immediately unlock an extra round without waiting for the midnight reset:
+\begin{itemize}
+    \item \textbf{Tournament Extra Round (Event 150):} Costs \textbf{150 XP} per additional attempt.
+    \item \textbf{Casual Wordly / Memory Match Extra Life:} Costs \textbf{100 XP} to play a second daily puzzle.
+    \item \textbf{Architecture Mechanism:} The backend creates an authorized \texttt{ondemand > 0} session in \texttt{quizapp\_quizplaysummery} and registers a corresponding debit entry in \texttt{participant\_xp\_ledger} with source \texttt{'burn\_extra\_round'}.
+\end{itemize}
+
+\subsection{2. In-Game Tactical Lifelines and Power-Ups}
+During high-stakes 60-question tournament matches, contestants can deploy tactical lifelines by spending XP:
+\begin{itemize}
+    \item \textbf{50-50 Lifeline (50 XP):} Instantly eliminates two incorrect answer options on any single challenging question, leaving the correct option and one distractor.
+    \item \textbf{Time Freeze (+15s Extension) (75 XP):} Adds 15 extra seconds to the countdown clock when time pressure is severe.
+    \item \textbf{Second Chance / Mulligan (100 XP):} Re-activates a single question that was answered incorrectly, allowing the player to choose again without penalty.
+\end{itemize}
+
+\subsection{3. Streak Freeze and Protection Shields}
+Daily streaks are fragile: missing a single calendar day resets a 14-day streak to Day 1, destroying the anticipation of the $+500\text{ XP}$ Half-Month Titan milestone. Contestants can purchase insurance:
+\begin{itemize}
+    \item \textbf{Streak Freeze Shield (300 XP):} Protects an active streak for 24 hours if the player fails to play due to travel or network outage.
+    \item \textbf{Retroactive Streak Recovery (500 XP):} Allows a player who broke their streak yesterday to restore their previous streak count within 48 hours.
+\end{itemize}
+
+\subsection{4. High-Stakes VIP and Championship Tournament Buy-Ins}
+Quizard hosts weekend mega-tournaments with cash prize pools exceeding \textbf{50,000 BDT}. While entry normally requires a premium bKash subscription, contestants can use accumulated XP as an entry buy-in:
+\begin{itemize}
+    \item \textbf{Championship Arena Buy-In (500 XP):} Grants an entry pass to the Saturday Night Live Tournament.
+    \item \textbf{Grandmaster Blitz Invitational (350 XP):} Unlocks access to the speed-quiz arena with 10-second rapid question intervals.
+\end{itemize}
+
+\subsection{5. Exclusive Profile Cosmetics, Badges, and Themes}
+XP unlocks vanity customization items that let players display their status on the live leaderboards:
+\begin{itemize}
+    \item \textbf{Animated Avatar Frames:} Glowing Bronze (200 XP), Emerald Fire (400 XP), Grandmaster Dragon (1,000 XP).
+    \item \textbf{Custom UI Themes:} Cyberpunk Neon, Imperial Royal Gold, and Deep Night OLED skins (300 XP each).
+    \item \textbf{Custom Honorific Titles:} Displays badges like \textit{``Trivia Sultan''} or \textit{``Dhaka Quiz Master''} beside the player's MSISDN on the leaderboard (500 XP).
+\end{itemize}
+
+\subsection{6. Telco Data Packs and bKash Digital Vouchers}
+Through deep integration with Bangladesh telcos (GP Digimart, Robi, Banglalink) and bKash, high-loyalty contestants can convert digital XP into real-world value:
+\begin{itemize}
+    \item \textbf{Telco Internet Packs:} 500 MB 4G data bundle for \textbf{1,000 XP}.
+    \item \textbf{bKash Cashback Vouchers:} 20 BDT mobile recharge discount coupon for \textbf{1,500 XP}.
+\end{itemize}
+
+\subsection{7. XP Redemption Ledger Architecture}
+All XP debits follow strict double-entry principles. An atomic transaction ensures points are deducted from the user's balance and logged in the immutable ledger before perks are provisioned:
+
+\begin{lstlisting}[language=SQL, caption={PostgreSQL Schema for XP Redemption and Feature Debits}]
+-- XP Redemption Ledger Table
+CREATE TABLE participant_xp_redemption (
+    id BIGSERIAL PRIMARY KEY,
+    msisdn VARCHAR(15) NOT NULL,
+    portal_id INT NOT NULL DEFAULT 15,
+    feature_type VARCHAR(50) NOT NULL, -- 'extra_round', 'streak_freeze', 'lifeline_50_50', 'vip_entry'
+    xp_spent INT NOT NULL CHECK (xp_spent > 0),
+    balance_before INT NOT NULL,
+    balance_after INT NOT NULL,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_xp_redemption ON participant_xp_redemption (msisdn, feature_type, created_at DESC);
+\end{lstlisting}
+
 \section{Database Schema and API Architecture}
 
 \subsection{1. PostgreSQL Immutable XP Ledger Table}

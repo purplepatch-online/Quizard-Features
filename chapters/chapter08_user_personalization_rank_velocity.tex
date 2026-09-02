@@ -110,7 +110,72 @@ The **Points to Top 10 Gap** ($S_{\text{gap}}$) calculates the minimum increment
 S_{\text{gap}} = \max\left(1, \, S_{\text{rank 10}} - S_{\text{player}} + 1\right)
 \end{equation}
 
-\section{PostgreSQL Schema & API Implementation}
+
+\section{Advanced In-Game Attractiveness, Dynamic Offers, and Intelligent Messaging}
+To elevate Quizard from a transactional quiz app into an addictive, emotionally engaging competitive arena, the personalization engine integrates three complementary retention pillars: \textbf{Dynamic Micro-Offers}, \textbf{Sensory Game Attractiveness}, and \textbf{Predictive Intelligent Messaging}.
+
+\subsection{1. Dynamic and Contextual In-Game Micro-Offers}
+Rather than displaying static, generic subscription banners, the engine evaluates real-time telemetry to trigger targeted offers at peak psychological moments:
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{|p{3.8cm}|p{3.8cm}|p{6.4cm}|}
+\hline
+\rowcolor{primaryBlue!15}
+\textbf{Trigger Moment} & \textbf{Player State} & \textbf{Personalized Dynamic Offer Copy} \\ \hline
+\textbf{The Near-Win Cutoff} & Finished round at Rank 11--15 (just outside 500 BDT cash). & \textit{``So Close! You are only 2 points away from Today's Top 10 cash prize. Unlock 1 Extra Round right now for 5 BDT (or 150 XP)!''} \\ \hline
+\textbf{Daily Round Exhaustion} & Completed 2/2 free rounds with $\ge 70\%$ accuracy. & \textit{``You are on fire today! Don't let your momentum fade. Activate the Unlimited Evening Pass for 10 BDT.''} \\ \hline
+\textbf{Happy Hour Multiplier} & Active during 9:00 PM -- 10:00 PM BST peak hours. & \textit{``[Lightning] Happy Hour Surge: Play BCS Mind Masters in the next 30 minutes to earn 2x XP and 1.5x Rating Boost!''} \\ \hline
+\textbf{Win-Streak Protector} & 7+ day active streak player logging in after 8:00 PM. & \textit{``Your 9-day streak expires in 3 hours. Claim your daily free check-in or equip a Streak Shield for 300 XP.''} \\ \hline
+\end{tabular}
+\caption{Real-Time Contextual Offer Triggers and Personalization Matrix}
+\end{table}
+
+\subsection{2. Sensory Game Attractiveness and Hype Mechanics}
+Game attractiveness directly impacts cognitive immersion. Quizard introduces dynamic visual and auditory feedback mechanisms that elevate the excitement of timed gameplay:
+
+\begin{itemize}
+    \item \textbf{Progressive Combo Meters and Streak Effects:}
+    \begin{itemize}
+        \item \textit{3 Correct Answers in a Row:} Spawns a glowing emerald combo counter with sound effect: \textbf{``Nice! [Fire]''}.
+        \item \textit{5 Correct Answers in a Row:} Screen border pulses with cyan electric energy: \textbf{``On Fire! [Lightning] (+5 Bonus XP)''}.
+        \item \textit{10 Correct Answers in a Row:} Activates golden particle explosions and dynamic audio fanfares: \textbf{``UNSTOPPABLE! [Trophy]''}.
+    \end{itemize}
+    \item \textbf{Tension-Inducing Countdown (Final 15 Seconds):} When the tournament countdown dips below 15 seconds, the UI transitions to a pulsing crimson vignette, and an accelerated heartbeat audio cue plays, creating urgency and intense focus.
+    \item \textbf{One-Tap Shareable Victory Cards:} Upon achieving a high score or rank promotion, the Next.js client renders a visual celebratory card featuring the player's avatar, score, rank velocity, and an auto-generated WhatsApp/Facebook Story share link: \textit{``I just scored 54/60 in Quizard Islamic Challenge! Can you beat my score?''}.
+\end{itemize}
+
+\subsection{3. Intelligent Contextual Messaging and Predictive Nudges}
+The notification engine moves beyond scheduled batch spam by delivering personalized, event-driven SMS and push nudges:
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    card/.style={rectangle, draw=cardBorder, fill=white, rounded corners=2.5mm, minimum width=11.5cm, minimum height=1.3cm, align=left, line width=1.1pt}
+]
+    \node[card] (n1) at (0, 0) {
+        \textbf{\large [Target] Near-Win Nudge} \hfill \textcolor{accentAmber!90!black}{\textbf{\footnotesize 10:15 PM}}\\
+        \footnotesize \textit{``Mahir, you're currently Rank 12. Only 3 points needed to overtake Rank 10 and claim today's 200 BDT cash! Play Round 2 now.''}
+    };
+    \node[card] (n2) at (0, -1.7) {
+        \textbf{\large [Rivalry] Rivalry Alert} \hfill \textcolor{accentRed}{\textbf{\footnotesize 9:45 PM}}\\
+        \footnotesize \textit{``Contestant 017****88 just beat your score by 1 point! Take back your \#1 spot before the midnight tournament cutoff.''}
+    };
+    \node[card] (n3) at (0, -3.4) {
+        \textbf{\large [Fire] Streak Protection Alert} \hfill \textcolor{primaryBlue}{\textbf{\footnotesize 8:30 PM}}\\
+        \footnotesize \textit{``Your 14-day streak expires at 23:59! Play 1 quick round to reach tomorrow's giant +500 XP Half-Month Titan surge.''}
+    };
+\end{tikzpicture}
+\caption{Examples of Event-Driven Intelligent In-Game Notifications}
+\end{figure}
+
+\begin{itemize}
+    \item \textbf{Optimal Time-of-Day Dispatch:} The system models each player's historical play window. If Tanvir typically plays at 9:30 PM, nudges are scheduled at 9:15 PM rather than intrusive morning hours.
+    \item \textbf{Adaptive Topic Nudges:} Players struggling with specific categories receive encouraging revision recommendations: \textit{``Review 5 General Science questions now to boost your score in tonight's BCS tournament!''}.
+\end{itemize}
+
+\section{PostgreSQL Schema \& API Implementation}
 
 \begin{lstlisting}[language=SQL, caption={PostgreSQL Schema for Personalization and Rank Snapshots}]
 -- Daily Rank Snapshots Table for Fast Velocity Lookups

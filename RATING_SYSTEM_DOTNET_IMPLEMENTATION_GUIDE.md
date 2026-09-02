@@ -48,7 +48,7 @@ Every integer rating $R \in [0, 60]$ maps directly to one of six named competiti
 
 ---
 
-## 3. The Formula & Mathematical Logic
+## 3. The Formula & Mathematical Logic ($\Delta S \times 0.6$)
 
 When a player with current rating $R$ scores $S$ in a match:
 
@@ -56,23 +56,18 @@ When a player with current rating $R$ scores $S$ in a match:
    $$\Delta S = S - R$$
 
 2. **Calculate the Integer Delta ($\Delta R$):**
-   $$\Delta R = 
-   \begin{cases} 
-   0 & \text{if } S = R \\
-   \max\left(1, \, \text{round}\big(0.20 \cdot (S - R)\big)\right) & \text{if } S > R \\
-   \min\left(-1, \, \text{round}\big(0.35 \cdot (S - R)\big)\right) & \text{if } S < R \text{ and } S \ge 20 \\
-   \min\left(-2, \, \text{round}\big(0.45 \cdot (S - R)\big)\right) & \text{if } S < 20 \quad \text{(Severe Drop Penalty)}
-   \end{cases}$$
+   Rating delta is calculated simply on **$\Delta S \times 0.6$**:
+   $$\Delta R = \text{round}\big(0.60 \cdot \Delta S\big) = \text{round}\big(0.60 \cdot (S - R)\big)$$
 
 3. **Calculate the New Rating ($R_{\text{new}}$):**
    $$R_{\text{new}} = \text{Math.Clamp}(R + \Delta R, \, 0, \, 60)$$
 
 ### 🔍 Concrete Example: A Player at Rating 34 (Specialist)
-* **Scores 32:** $\Delta S = -2 \implies \Delta R = -1 \implies R_{\text{new}} = \mathbf{33}$ *(Remains Specialist)*
-* **Scores 36:** $\Delta S = +2 \implies \Delta R = +1 \implies R_{\text{new}} = \mathbf{35}$ *(Climbs within Specialist)*
-* **Scores 38:** $\Delta S = +4 \implies \Delta R = +1 \implies R_{\text{new}} = \mathbf{35}$ *(Climbs toward Expert)*
-* **Scores 52 (Master Breakout):** $\Delta S = +18 \implies \Delta R = +5 \implies R_{\text{new}} = \mathbf{39}$ *(Next round $S=55 \implies \Delta R = +4 \implies R = \mathbf{43}$ Promoted to Expert!)*
-* **Scores 12 (Quits Early):** $\Delta S = -22 \implies \Delta R = -10 \implies R_{\text{new}} = \mathbf{24}$ *(Demoted to Apprentice!)*
+* **Scores 32:** $\Delta S = -2 \implies \Delta R = \text{round}(0.6 \times -2) = -1 \implies R_{\text{new}} = \mathbf{33}$ *(Remains Specialist)*
+* **Scores 36:** $\Delta S = +2 \implies \Delta R = \text{round}(0.6 \times +2) = +1 \implies R_{\text{new}} = \mathbf{35}$ *(Climbs within Specialist)*
+* **Scores 38:** $\Delta S = +4 \implies \Delta R = \text{round}(0.6 \times +4) = +2 \implies R_{\text{new}} = \mathbf{36}$ *(Climbs toward Expert)*
+* **Scores 52 (Master Breakout):** $\Delta S = +18 \implies \Delta R = \text{round}(0.6 \times 18) = +11 \implies R_{\text{new}} = \mathbf{45}$ *(Promoted directly to Expert!)*
+* **Scores 12 (Severe Drop):** $\Delta S = -22 \implies \Delta R = \text{round}(0.6 \times -22) = -13 \implies R_{\text{new}} = \mathbf{21}$ *(Demoted to Apprentice!)*
 
 ---
 
@@ -130,36 +125,15 @@ public static class RatingCalculator
     public const int MinRating = 0;
     public const int MaxRating = 60;
 
+    public const double Sensitivity = 0.60;
+
     public static int CalculateDelta(int currentRating, int roundScore)
     {
         currentRating = Math.Clamp(currentRating, MinRating, MaxRating);
         roundScore = Math.Clamp(roundScore, MinRating, MaxRating);
 
         int gap = roundScore - currentRating;
-
-        if (gap == 0)
-        {
-            return 0;
-        }
-
-        if (gap > 0)
-        {
-            // Positive progression: 20% sensitivity, guaranteed at least +1
-            int rawDelta = (int)Math.Round(0.20 * gap, MidpointRounding.AwayFromZero);
-            return Math.Max(1, rawDelta);
-        }
-
-        // Underperformance (gap < 0)
-        if (roundScore >= 20)
-        {
-            // Moderate drop: 35% sensitivity, guaranteed at least -1
-            int rawDelta = (int)Math.Round(0.35 * gap, MidpointRounding.AwayFromZero);
-            return Math.Min(-1, rawDelta);
-        }
-
-        // Severe drop / Quit early (roundScore < 20): 45% sensitivity, guaranteed at least -2
-        int severeDelta = (int)Math.Round(0.45 * gap, MidpointRounding.AwayFromZero);
-        return Math.Min(-2, severeDelta);
+        return (int)Math.Round(Sensitivity * gap, MidpointRounding.AwayFromZero);
     }
 
     public static int ApplyDelta(int currentRating, int delta)
@@ -544,11 +518,11 @@ public class RatingCalculatorTests
 {
     [Theory]
     [InlineData(34, 34, 0)]    // Identical score: 0 delta
-    [InlineData(34, 36, 1)]    // +2 gap: round(0.20 * 2) = +1
-    [InlineData(34, 38, 1)]    // +4 gap: round(0.20 * 4) = +1
-    [InlineData(34, 52, 5)]    // +18 gap (Master breakout): round(0.20 * 18) = +4 / +5
-    [InlineData(34, 32, -1)]   // -2 gap: round(0.35 * -2) = -1
-    [InlineData(34, 12, -10)]  // -22 gap (Severe quit): round(0.45 * -22) = -10
+    [InlineData(34, 36, 1)]    // +2 gap: round(0.60 * 2) = +1
+    [InlineData(34, 38, 2)]    // +4 gap: round(0.60 * 4) = +2
+    [InlineData(34, 52, 11)]   // +18 gap (Master breakout): round(0.60 * 18) = +11
+    [InlineData(34, 32, -1)]   // -2 gap: round(0.60 * -2) = -1
+    [InlineData(34, 12, -13)]  // -22 gap (Severe quit): round(0.60 * -22) = -13
     public void CalculateDelta_ReturnsExpectedIntegerDelta(int currentRating, int roundScore, int expectedDelta)
     {
         int actualDelta = RatingCalculator.CalculateDelta(currentRating, roundScore);
