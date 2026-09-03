@@ -72,23 +72,80 @@ flowchart TD
     end
 ```
 
+### 2.1 Player Lifecycle & Retention State Machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> AnonymousGuest: User visits site / downloads app
+    AnonymousGuest --> FreeTrialUser: Signs in with phone (MSISDN OTP)
+
+    state FreeTrialUser {
+        [*] --> TrialPlaying: Plays free round (cap 4 questions)
+        TrialPlaying --> TrialWallHit: Attempts question 5
+    }
+
+    FreeTrialUser --> Day1ChurnRisk: Drops off without subscribing
+    Day1ChurnRisk --> LapsedDormant: Inactive for 48h+
+
+    Day1ChurnRisk --> SubscribedContender: Trigger "Missing Rewards" Nudge (bKash 2 BDT/day)
+    FreeTrialUser --> SubscribedContender: Direct Subscription Activation
+
+    state SubscribedContender {
+        [*] --> DailyRoundPlaying: 60 questions / 180s live match
+        DailyRoundPlaying --> LeaderboardClimbing: Round score recorded
+    }
+
+    LeaderboardClimbing --> NearWinZone: Reaches Rank 11-15 (inches from Top 10)
+    NearWinZone --> SubscribedContender: Triggers "Near-Win Nudge" (unlocks extra round)
+    NearWinZone --> Top10PrizeZone: Scores above Rank 10 cutoff (Qualifies for BDT payout)
+
+    Top10PrizeZone --> Top10PrizeZone: Defends Rank / Rivalry Alerts
+    Top10PrizeZone --> RankSlipping: Other player scores higher (Rank velocity slips)
+    RankSlipping --> SubscribedContender: Plays rematch to reclaim rank
+
+    SubscribedContender --> MultiGenreExplorer: Triggers "Cross-Game Discovery" (plays BCS/Wordly for 2x XP)
+    MultiGenreExplorer --> SubscribedContender: Returns to daily tournament
+
+    SubscribedContender --> StreakAtRisk: 0 plays today & time >= 18:00 BST
+    StreakAtRisk --> SubscribedContender: Triggers "Streak Protection Nudge" / Plays 1 round
+    StreakAtRisk --> StreakBroken: Midnight arrives without play
+    StreakBroken --> Day1ChurnRisk: Streak resets to 0
+
+    SubscribedContender --> StreakTitan: Maintains active streak to Day 15 (+500 XP Surge)
+    StreakTitan --> SubscribedContender: New streak cycle begins
+```
+
 ---
 
 ## 3. The 4-Tier Personalization Rules Engine
 
 The backend evaluates the user's real-time telemetry against a hierarchical set of rules. The highest priority matching rule generates the active nudge:
 
-```
-Priority 1: Near-Win Cutoff (Rank 11–15)
-     │ (If not matching)
-     ▼
-Priority 2: Streak Protection (Active Streak ≥ 3, 0 plays today, time ≥ 18:00 BST)
-     │ (If not matching)
-     ▼
-Priority 3: Missing Rewards (Unsubscribed, accuracy ≥ 50%, plays ≥ 1)
-     │ (If not matching)
-     ▼
-Priority 4: Cross-Game Discovery (Distinct games played == 1)
+### 3.1 Personalization Decision Tree Flowchart
+
+```mermaid
+flowchart TD
+    Start([User Requests Profile / App Open / Round Done]) --> FetchContext[Fetch Player Telemetry Context from PostgreSQL & Redis]
+    
+    FetchContext --> CheckRank{Is User Rank 11 to 15 AND Gap to Top 10 <= 5?}
+    CheckRank -- Yes --> NudgeNearWin["🏆 TRIGGER: NEAR_WIN NUDGE<br/>'So Close! Only X pts to Top 10 Cash Prize.'<br/>Action: Unlock Extra Round (5 BDT / 150 XP)"]
+    
+    CheckRank -- No --> CheckStreak{Current Streak >= 3 AND Plays Today == 0 AND Hour >= 18:00 BST?}
+    CheckStreak -- Yes --> NudgeStreak["🔥 TRIGGER: STREAK_PROTECTION NUDGE<br/>'Your N-day streak expires at 23:59!'<br/>Action: Play 1 Quick Round to Protect XP"]
+    
+    CheckStreak -- No --> CheckSub{Is Subscribed == FALSE AND Total Attempts >= 1 AND Accuracy >= 50%?}
+    CheckSub -- Yes --> NudgeMissing["💰 TRIGGER: MISSING_REWARDS NUDGE<br/>'You scored high! Unlock weekly 25,000 BDT cash pool.'<br/>Action: Subscribe via bKash (2 BDT/day)"]
+    
+    CheckSub -- No --> CheckGenre{Distinct Game Genres Played == 1 AND Total Plays >= 3?}
+    CheckGenre -- Yes --> NudgeCrossGame["✨ TRIGGER: CROSS_GAME DISCOVERY<br/>'Tournament Specialist! Earn 2x XP in BCS & Wordly.'<br/>Action: Explore Other Games"]
+    
+    CheckGenre -- No --> DefaultState["Default State: Standard Profile / Hero Overview"]
+    
+    NudgeNearWin --> RenderUI[Next.js Client Renders Adaptive Personalization Hero Card]
+    NudgeStreak --> RenderUI
+    NudgeMissing --> RenderUI
+    NudgeCrossGame --> RenderUI
+    DefaultState --> RenderUI
 ```
 
 ### Detailed Rules Matrix:
@@ -122,6 +179,30 @@ $$S_{\text{gap}} = \max\left(1, \, S_{\text{rank 10}} - S_{\text{player}} + 1\ri
 
 *Example:* If Rank 10 holds 51 points and the user currently holds 48 points:
 $$S_{\text{gap}} = 51 - 48 + 1 = 4\text{ points needed to surpass Rank 10.}$$
+
+### 4.3 Rank Velocity & Snapshot Pipeline Flowchart
+
+```mermaid
+flowchart LR
+    subgraph Midnight Worker [Daily 00:01 BST]
+        A[(quiz_plays)] -->|DENSE_RANK| B[Capture Closing Ranks]
+        B -->|BULK INSERT| C[(leaderboard_daily_snapshots)]
+    end
+
+    subgraph Real-Time Request [Leaderboard API]
+        D[Player Requests Leaderboard] --> E[Fetch Current Live Rank: R_curr]
+        D --> F[Fetch Yesterday Snapshot Rank: R_yest from DB]
+        E & F --> G["Compute Delta: ΔRank = R_yest - R_curr"]
+        
+        G --> Decision{ΔRank Value}
+        Decision -->|ΔRank > 0| H["↑ Surge Up (+ΔRank) [Emerald Badge]"]
+        Decision -->|ΔRank < 0| I["↓ Slip Down (-|ΔRank|) [Crimson Badge]"]
+        Decision -->|ΔRank = 0| J["= Hold Position [Slate Badge]"]
+        
+        E --> K["Compute Prize Gap: S_gap = max(1, S_rank10 - S_user + 1)"]
+        H & I & J & K --> L[Return Enriched JSON to Next.js Client]
+    end
+```
 
 ---
 
