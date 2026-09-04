@@ -22,6 +22,7 @@ Quizard-Features/
 ├── RATING_SYSTEM_DOTNET_IMPLEMENTATION_GUIDE.md # .NET 10 Clean Architecture Implementation Guide
 ├── REDIS_BACKEND_REALTIME_RUNTIME_IMPLEMENTATION_GUIDE.md # .NET 10 Redis Real-Time Quiz Runtime Architecture Guide
 ├── USER_PERSONALIZATION_AND_RANK_VELOCITY_IMPLEMENTATION_GUIDE.md # User Personalization Engine, Rank Velocity & Nudges Guide
+├── DOCKER_AND_GITHUB_ACTIONS_DEPLOYMENT_GUIDE.md # Multi-Repo Docker & GitHub Actions CI/CD Deployment Guide
 └── chapters/
     ├── chapter01_authentication_identity_lifecycle_logout.tex # 1. Authentication, MSISDN Normalization & Logout
     ├── chapter02_rules_engine_governance.tex     # 2. Rules Engine, 180s Timers & 2-Round Cap
