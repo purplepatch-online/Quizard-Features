@@ -286,19 +286,125 @@ yarn-error.log
 
 ---
 
-## 5. Unified Orchestration: Docker Compose
+## 5. Unified Orchestration & Production Architectures
 
-### 5.1 Production Server Compose (`docker-compose.yml`)
+When deploying Quizard into production, you have two primary deployment architectures:
 
-This file is deployed on your production server (e.g. `/opt/quizard/docker-compose.yml`):
+* **Architecture Option A (Recommended for Peak Tournament Performance): Native Bare-Metal PostgreSQL & Redis on Host OS + Containerized Backend/Frontend.**  
+  *Eliminates Docker NAT network hops and container storage virtualization, delivering sub-millisecond Redis response times and maximum disk IOPS during peak 10,000 player rushes.*
+* **Architecture Option B: All-in-Docker Full Stack.**  
+  *Everything runs in isolated Docker containers, ideal for multi-tenant VPS or standardized cloud nodes.*
+
+---
+
+### 5.1 Architecture Option A: High-Performance Native Host DB + Docker Apps (Recommended)
+
+In this architecture:
+1. **PostgreSQL 16 and Redis 7** run directly as `systemd` services on the VPS host with direct NVMe disk access and raw kernel memory allocation.
+2. **Backend (.NET 10) and Frontend (Next.js 16)** run inside Docker containers managed by Docker Compose.
+3. The Dockerized backend communicates with the host database and Redis using `host.docker.internal:host-gateway`.
+
+#### 5.1.1 Production `docker-compose.yml` (Native Host DB)
+
+Place in `/opt/quizard/docker-compose.yml`:
 
 ```yaml
 version: '3.8'
 
 services:
-  # ---------------------------------------------------------------------------
-  # 1. PostgreSQL Database
-  # ---------------------------------------------------------------------------
+  # ===========================================================================
+  # 1. .NET 10 Backend Web API
+  # ===========================================================================
+  backend:
+    image: ghcr.io/${GHCR_OWNER:-tamaldfg}/quizard-backend:latest
+    container_name: quizard-backend
+    restart: always
+    # Resolves 'host.docker.internal' to the VPS host gateway IP (172.17.0.1)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_HTTP_PORTS=5011
+      - ConnectionStrings__DefaultConnection=Host=host.docker.internal;Port=5432;Database=${POSTGRES_DB:-quizard};Username=${POSTGRES_USER:-quizard_user};Password=${POSTGRES_PASSWORD}
+      - Redis__ConnectionString=host.docker.internal:6379,password=${REDIS_PASSWORD},abortConnect=false,connectTimeout=5000,syncTimeout=2000
+      - AppConfig__CmsBaseUrl=https://cms.quizard.live
+      - AppConfig__WebBaseUrl=https://quizard.live
+      - AppConfig__DefaultEventId=34
+      - AppConfig__DefaultPortalId=15
+    ports:
+      - "5011:5011"
+    networks:
+      - quizard-network
+
+  # ===========================================================================
+  # 2. Next.js Frontend Web Client
+  # ===========================================================================
+  frontend:
+    image: ghcr.io/${GHCR_OWNER:-tamaldfg}/quizard-frontend:latest
+    container_name: quizard-frontend
+    restart: always
+    depends_on:
+      - backend
+    environment:
+      - PORT=8080
+      - HOSTNAME=0.0.0.0
+      - NEXT_PUBLIC_BASE_URL=${NEXT_PUBLIC_BASE_URL:-http://localhost:5011}
+    ports:
+      - "8080:8080"
+    networks:
+      - quizard-network
+
+networks:
+  quizard-network:
+    driver: bridge
+```
+
+#### 5.1.2 Native VPS Host OS Performance Tuning
+
+Apply these production kernel settings on the VPS host (`/etc/sysctl.d/99-quizard-perf.conf`):
+
+```ini
+# 1. Allow Redis background save memory overcommit without memory allocation errors
+vm.overcommit_memory = 1
+
+# 2. Increase maximum TCP listen backlog (default 128/512 is too small for 10k concurrent players)
+net.core.somaxconn = 65535
+
+# 3. Increase maximum open file descriptors for high network socket counts
+fs.file-max = 2097152
+```
+
+Reload sysctl:
+```bash
+sudo sysctl --system
+```
+
+Disable Transparent Huge Pages (prevents latency spikes in Redis during memory compaction):
+```bash
+echo never | sudo tee /sys/kernel/mm/transparent_hugepage/enabled
+```
+
+#### 5.1.3 Native Host PostgreSQL & Redis Binding
+* **PostgreSQL (`/etc/postgresql/16/main/postgresql.conf`):**  
+  `listen_addresses = 'localhost,172.17.0.1'` (listens to local machine & Docker bridge gateway only).
+* **PostgreSQL (`/etc/postgresql/16/main/pg_hba.conf`):**  
+  `host quizard quizard_user 172.17.0.0/16 scram-sha-256` (authorizes Docker containers).
+* **Redis (`/etc/redis/redis.conf`):**  
+  `bind 127.0.0.1 172.17.0.1`  
+  `requirepass SuperSecretPassword#2026!`  
+  `maxmemory 512mb`  
+  `maxmemory-policy allkeys-lru`
+
+---
+
+### 5.2 Architecture Option B: All-in-Docker Full Stack
+
+If deploying to environments where running native system services is not desired:
+
+```yaml
+version: '3.8'
+
+services:
   postgres:
     image: postgres:16-alpine
     container_name: quizard-postgres
@@ -319,9 +425,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # ---------------------------------------------------------------------------
-  # 2. Redis Distributed In-Memory Cache
-  # ---------------------------------------------------------------------------
   redis:
     image: redis:7.4-alpine
     container_name: quizard-redis
@@ -333,41 +436,24 @@ services:
       - redis_data:/data
     networks:
       - quizard-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
 
-  # ---------------------------------------------------------------------------
-  # 3. .NET 10 Backend Web API
-  # ---------------------------------------------------------------------------
   backend:
     image: ghcr.io/${GHCR_OWNER:-tamaldfg}/quizard-backend:latest
     container_name: quizard-backend
     restart: always
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_HTTP_PORTS=5011
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB:-quizard};Username=${POSTGRES_USER:-quizard_user};Password=${POSTGRES_PASSWORD}
       - Redis__ConnectionString=redis:6379,password=${REDIS_PASSWORD},abortConnect=false
-      - AppConfig__CmsBaseUrl=https://cms.quizard.live
-      - AppConfig__WebBaseUrl=https://quizard.live
-      - AppConfig__DefaultEventId=34
-      - AppConfig__DefaultPortalId=15
     ports:
       - "5011:5011"
     networks:
       - quizard-network
 
-  # ---------------------------------------------------------------------------
-  # 4. Next.js Frontend Web Client
-  # ---------------------------------------------------------------------------
   frontend:
     image: ghcr.io/${GHCR_OWNER:-tamaldfg}/quizard-frontend:latest
     container_name: quizard-frontend
@@ -389,9 +475,7 @@ networks:
 
 volumes:
   postgres_data:
-    driver: local
   redis_data:
-    driver: local
 ```
 
 ### 5.2 Local Development Compose (`docker-compose.local.yml`)
